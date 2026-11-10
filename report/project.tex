@@ -1,0 +1,92 @@
+\documentclass[10pt, conference]{IEEEtran}
+\usepackage[english]{babel}
+\usepackage[usenames]{color}
+\usepackage{colortbl}
+\usepackage{comment}
+\usepackage{graphicx}
+\usepackage{epsfig}
+\usepackage{array, colortbl}
+\usepackage{listings}
+\usepackage{epstopdf}
+\usepackage{multirow}
+\usepackage{rotating}
+%\usepackage{subfigure}
+\usepackage{subfig}
+\usepackage{float}
+\usepackage[obeyspaces,hyphens,spaces]{url}
+\usepackage{balance}
+\usepackage{fancybox}
+\usepackage{scalefnt}
+\usepackage[normalem]{ulem}
+%\pagestyle{plain}
+\pagenumbering{arabic}
+\pagestyle{empty}
+\clubpenalty = 10000
+\widowpenalty = 10000
+\displaywidowpenalty = 10000
+\usepackage{hyperref}
+
+\makeatletter
+\renewcommand{\paragraph}[1]{\noindent\textsf{#1}.}
+
+\title{My Project Title}
+\author{John Doe
+    \\
+    \emph{Dep. of Computer and Software Engineering, Polytechnique Montréal}
+    \\
+    \emph{Montréal, Canada}
+    \\
+    \emph{john.doe@polymtl.ca}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam nibh nisi, ultricies a placerat id, pharetra quis arcu. Donec ut rhoncus odio, in luctus turpis. Praesent in tellus in tellus volutpat sagittis non in felis. Praesent commodo, nisl ac ornare porta, quam libero consectetur mi, sed facilisis elit enim non ipsum. Ut consequat eros id ultricies iaculis. Ut pellentesque rhoncus neque. Integer vestibulum ac diam vitae faucibus. Sed sit amet viverra enim. Suspendisse eu nulla vel turpis auctor posuere sit amet non metus.
+\end{abstract}
+
+
+\section{Introduction}
+\label{sec:introduction}
+
+Introduce the problem that is studied and explain why this project is important. This should lead up to the research questions, which should be mentioned at the end of the introduction.
+
+\dots You can cite papers like this~\cite{humble10}.
+
+\section{Related Work}
+\label{sec:related-work}
+Discuss existing studies related to the project. Do NOT simply provide an organized list of existing studies. Instead, you should categorize them and use summarizing language (with examples) to provide an overview of each category of studies. Explain how your work is related to and/or different from these studies, highlighting the novelty of your work.
+
+\section{Approach}
+\label{sec:approach}
+
+Explain the approach used for addressing the research questions. This should include the subject data or systems you selected, data collection, approach/experiment design, and data analysis used to address the research questions.
+
+
+\section{Results}
+\label{sec:results}
+
+Present the results for your research questions. For each one, provide a short motivation (why is this question important to answer?), a brief overview of analyses used (refer to those discussed in \autoref{sec:approach}), and your detailed results. For each individual result of a research question, put a first sentence in bold, then use the rest of the paragraph and possibly follow-up paragraphs to explain the result. Do this for each result of a question, and all questions.
+
+
+\section{Discussion}
+\label{sec:disc}
+
+Discuss here the interesting findings across the different research questions or anything that did not fit under a specific research question. 
+
+\section{Threats to Validity}
+\label{sec:thre-valid}
+
+Discuss the threats to the validity of your design, implementation, and reporting of the work (e.g., any limitations in the data that you have used or the analyses that you were able to do). Explain how you have mitigated these limitations.
+
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+What can you conclude based on the research questions, and in general? How can practitioners/researchers benefit from your study?
+
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{project.bib}
+\end{document}
