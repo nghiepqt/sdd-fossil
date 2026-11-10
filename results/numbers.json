@@ -1,0 +1,306 @@
+{
+  "age_filtered": {
+    "min_age_30d": {
+      "fossil": {
+        "ci_hi": 0.18238315460044655,
+        "ci_lo": 0.1760790841267277,
+        "k": 10192,
+        "n": 56872,
+        "p": 0.17920945280630188
+      },
+      "living": 56872,
+      "never_revised": {
+        "ci_hi": 0.6126160437096059,
+        "ci_lo": 0.6045939295080135,
+        "k": 34613,
+        "n": 56872,
+        "p": 0.608612322408215
+      }
+    },
+    "min_age_60d": {
+      "fossil": {
+        "ci_hi": 0.1732740859041867,
+        "ci_lo": 0.16592385771208912,
+        "k": 6791,
+        "n": 40049,
+        "p": 0.16956728008189967
+      },
+      "living": 40049,
+      "never_revised": {
+        "ci_hi": 0.5945361704271923,
+        "ci_lo": 0.5849017854888474,
+        "k": 23618,
+        "n": 40049,
+        "p": 0.5897275837099553
+      }
+    },
+    "min_age_90d": {
+      "fossil": {
+        "ci_hi": 0.17262832814198206,
+        "ci_lo": 0.1636884610767557,
+        "k": 4520,
+        "n": 26887,
+        "p": 0.16811098300293822
+      },
+      "living": 26887,
+      "never_revised": {
+        "ci_hi": 0.5861675148562375,
+        "ci_lo": 0.5743704142602923,
+        "k": 15602,
+        "n": 26887,
+        "p": 0.5802804329229739
+      }
+    }
+  },
+  "cohort": {
+    "cohort_specs": 468163,
+    "commit_rows_for_files_not_in_spec_files": 41170,
+    "commit_rows_in_cohort": 735667,
+    "commit_table_distinct_files": 476027,
+    "commit_table_rows": 780335,
+    "content_feature_rows": 468307,
+    "dropped_specs": 2632,
+    "first_commit_max": "2026-07-10T08:41:28Z",
+    "first_commit_min": "2024-01-02T16:21:45Z",
+    "no_commit_history": 1473,
+    "no_content": 2488,
+    "no_history_and_no_content": 1329,
+    "snapshot_end": "2026-07-11",
+    "spec_files_repos_case_insensitive": 73030,
+    "spec_files_repos_distinct_name": 73031,
+    "spec_files_rows": 470795,
+    "sum_file_total_commits_in_cohort": 735667
+  },
+  "headline": {
+    "cohort_commits": 735667,
+    "cohort_specs": 468163,
+    "fossil": {
+      "ci_hi": 0.1987816231926369,
+      "ci_lo": 0.19302246828942435,
+      "k": 14294,
+      "n": 72971,
+      "p": 0.19588603691877596
+    },
+    "fossil_repos": 2488,
+    "living": 72971,
+    "living_repos": 6085,
+    "living_younger_than_30d": 16099,
+    "living_younger_than_60d": 32922,
+    "living_younger_than_90d": 46084,
+    "never_revised": {
+      "ci_hi": 0.630969576375442,
+      "ci_lo": 0.6239538962640644,
+      "k": 45787,
+      "n": 72971,
+      "p": 0.6274684463691055
+    },
+    "no_placeholder": {
+      "ci_hi": 0.711049395782763,
+      "ci_lo": 0.7044499652827896,
+      "k": 51646,
+      "n": 72971,
+      "p": 0.707760617231503
+    },
+    "openspec_files": 274955,
+    "openspec_repos": 8926,
+    "openspec_role_never_revised": {
+      "archived": {
+        "ci_hi": 0.9676800558798085,
+        "ci_lo": 0.9659040491716379,
+        "k": 151181,
+        "n": 156372,
+        "p": 0.966803519811731
+      },
+      "change_proposal": {
+        "ci_hi": 0.8994562550749572,
+        "ci_lo": 0.8936021235238647,
+        "k": 37281,
+        "n": 41582,
+        "p": 0.8965658217497956
+      },
+      "living": {
+        "ci_hi": 0.630969576375442,
+        "ci_lo": 0.6239538962640644,
+        "k": 45787,
+        "n": 72971,
+        "p": 0.6274684463691055
+      },
+      "na": {
+        "ci_hi": 0.8886571758707957,
+        "ci_lo": 0.8650112302979251,
+        "k": 2596,
+        "n": 2959,
+        "p": 0.8773234200743495
+      }
+    },
+    "openspec_roles_all": {
+      "archived": 156936,
+      "change_proposal": 41806,
+      "living": 73253,
+      "na": 2960
+    },
+    "openspec_roles_cohort": {
+      "archived": 156372,
+      "change_proposal": 41582,
+      "living": 72971,
+      "na": 2959
+    },
+    "openspec_share_of_files": 0.5840227699954332,
+    "placeholder": {
+      "ci_hi": 0.2955500347172104,
+      "ci_lo": 0.28895060421723695,
+      "k": 21325,
+      "n": 72971,
+      "p": 0.2922393827684971
+    },
+    "placeholder_revised": {
+      "ci_hi": 0.09851558900862958,
+      "ci_lo": 0.09423359930934672,
+      "k": 7031,
+      "n": 72971,
+      "p": 0.09635334584972112
+    },
+    "repos": 73030,
+    "spec_files": 470795,
+    "top_fossil_repo": "opencue/gitguardex",
+    "top_fossil_repo_n": 134,
+    "top_fossil_repo_share": 0.00937456275360291
+  },
+  "placeholder_flag": {
+    "flag_only_examples": {
+      "(TBD)": 7,
+      "<no Purpose section>": 127,
+      "Define `/opsx:onboard` behavior for guiding users through an end-to-end OpenSpec workflow on their real codebase.": 8,
+      "TBD": 196,
+      "TBD (Added from definitive-2026-template)": 7,
+      "TBD - created by syncing change alfred-autonomous-platform-ops. Update Purpose after archive.": 9,
+      "TBD - created by syncing change module-04-admission-enrollment. Update Purpose after archive.": 13,
+      "TBD - created by syncing change module-05-student-management. Update Purpose after archive.": 6,
+      "TBD - created by syncing completed phase changes. Update Purpose after archive.": 47,
+      "TBD - created while syncing archived changes. Update Purpose after archive.": 7,
+      "TBD - normalized from existing baseline requirements.": 19,
+      "TBD \u2014 restored after delta-sync structural cleanup. Update Purpose with a one-line statement of what this capability own": 268,
+      "TBD \u2014 see change project-quality-foundation for full context.": 6,
+      "TBD.": 11,
+      "TBD: created by syncing change 'bidi-core-coverage-and-selenium'. Update Purpose to describe this capability.": 9
+    },
+    "flag_vs_archive_any": {
+      "fn": 0,
+      "fp": 1674,
+      "precision": 0.9215005861664712,
+      "recall": 1.0,
+      "tn": 51646,
+      "tp": 19651
+    },
+    "flag_vs_canonical": {
+      "fn": 0,
+      "fp": 1678,
+      "precision": 0.9213130128956624,
+      "recall": 1.0,
+      "tn": 51646,
+      "tp": 19647
+    },
+    "flag_vs_purpose_tbd": {
+      "fn": 0,
+      "fp": 280,
+      "precision": 0.9868698710433763,
+      "recall": 1.0,
+      "tn": 51646,
+      "tp": 21045
+    },
+    "fossils_by_archive_text": 13426,
+    "living": 72971,
+    "living_with_content": 72971,
+    "missed_examples": [],
+    "n_any_tbd": 21132,
+    "n_archive_any": 19651,
+    "n_canonical": 19647,
+    "n_no_purpose_section": 22506,
+    "n_purpose_tbd": 21045
+  },
+  "renames": {
+    "archived": {
+      "checked": 15,
+      "follow_gt_plain": 5,
+      "follow_hops": {
+        "archive_move": 4,
+        "other": 1
+      },
+      "specmine_equals_plain": 15,
+      "specmine_lt_follow": 5
+    },
+    "checked": 30,
+    "living": {
+      "checked": 15,
+      "follow_gt_plain": 4,
+      "follow_hops": {
+        "delta_to_living": 3,
+        "living_rename": 1
+      },
+      "specmine_equals_plain": 14,
+      "specmine_lt_follow": 4
+    },
+    "sampled": 30,
+    "seed": 20261018
+  },
+  "repo_fossil": {
+    "k1": {
+      "living_specs_covered": 72971,
+      "mean": 0.2215523901807291,
+      "median": 0.0,
+      "repos": 6085,
+      "share_extreme": 0.762202136400986,
+      "share_ge_90pct": 0.11799506984387839,
+      "share_le_10pct": 0.6442070665571077,
+      "share_one": 0.11224322103533278,
+      "share_zero": 0.5911257189811011
+    },
+    "k10": {
+      "living_specs_covered": 57372,
+      "mean": 0.18621749848644467,
+      "median": 0.05,
+      "repos": 2095,
+      "share_extreme": 0.6372315035799523,
+      "share_ge_90pct": 0.03532219570405728,
+      "share_le_10pct": 0.601909307875895,
+      "share_one": 0.018615751789976133,
+      "share_zero": 0.4477326968973747
+    },
+    "k3": {
+      "living_specs_covered": 70921,
+      "mean": 0.20542362370067918,
+      "median": 0.0,
+      "repos": 4618,
+      "share_extreme": 0.7016024252923343,
+      "share_ge_90pct": 0.07644001732351667,
+      "share_le_10pct": 0.6251624079688177,
+      "share_one": 0.06886097877869207,
+      "share_zero": 0.5552187093980078
+    },
+    "k5": {
+      "living_specs_covered": 67366,
+      "mean": 0.19775448736312465,
+      "median": 0.0,
+      "repos": 3594,
+      "share_extreme": 0.6669449081803005,
+      "share_ge_90pct": 0.05703951029493601,
+      "share_le_10pct": 0.6099053978853645,
+      "share_one": 0.04730105731775181,
+      "share_zero": 0.5200333889816361
+    },
+    "k_main": 3
+  },
+  "sample_size": {
+    "confidence": 0.95,
+    "fossil": {
+      "n_margin_05": 375,
+      "n_margin_10": 96,
+      "population": 14294
+    },
+    "revised": {
+      "n_margin_05": 379,
+      "n_margin_10": 96,
+      "population": 27184
+    }
+  }
+}
