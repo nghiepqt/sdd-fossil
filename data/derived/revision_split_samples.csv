@@ -1,0 +1,21 @@
+kind,repo_name,commit_sha,message_first_line
+archive_merge,jankneumann/agentic-coding-tools,6c2a25fb29931e9cae837735b0d1d81a3a0ea5dd,chore(openspec): archive add-per-phase-archetype-resolution + sync runtime skills
+archive_merge,Akisaira/headscale-extra-dns-webui,ccbe5052b4aa75187c308964a82c129187fbb227,feat: implement full CRUD operations for DNS records
+archive_merge,zhukunpenglinyutong/desktop-cc-gui,72c5cc60dd9727f65ec7d7672cd93becf077ecae,chore(openspec): 继续归档已验证提案
+archive_merge,Blue-Net-Team/official-web2,cdbd659d28e58b6c4ea017ce7a23065f7c101263,feat: 软件资源管理支持拖拽排序
+archive_merge,dizzrt/bigos,d3e26a797cc9463304f9bd55d3042726cdeb8629,feat(stream-socket): 完成有界TCP流套接字接口实现
+archive_merge,thecharge/garden-planner,d28c0ac81548409290ae97b76cfd1466875ce6ab,openspec: archive make-capture-voice-yoy-real
+archive_merge,carverauto/serviceradar,78211d298d5ae1cabd90024ea575fab027190668,chore: archive stale openspec proposals
+archive_merge,netclaw-dev/netclaw,fe201bc9e11f7db36e03ee02afafea3b029451fa,chore(openspec): archive 8 completed changes and sync delta specs (#1325)
+archive_merge,langoai/lango,29e7084dc63a6565d92e0909230eb2e4b5b0cc95,feat: standardize knowledge taxonomy and enhance content management
+archive_merge,limanman1005/ragEnlighten,fcc9d15a3626360ba90936d8b5a326f5038b37fc,feat: Add MCP tool server and client integration for Agent tools
+other_edit,ezefernandezyf/nexus-talent,1257c54ee4834f47c66832e69201a2158d0e0cb4,chore: remove all em-dashes from project (#54)
+other_edit,AkaraChen/ag-lang,591388e15443ae77b7aec3d03dd8006e9b7131f0,init: spec for agent codegen
+other_edit,rozx/Tsukuyomi,7e1d82a5dcbc8a2a6959a47e9d0553425acb6d6d,fix(editor): 落实虚拟滚动 PR 评审 — 滑块最小高度同步、切章/换模式重置测量、导航令牌、移动端空章节态、焦点可访问性、spec Purpose
+other_edit,echowaves/WiSaw.cdk,6634151ca37e1bbcc4280978fbdb1b56e0307588,"feat: Add detailed requirements and scenarios for various features including abuse reporting, photo management, and user identity validation"
+other_edit,Codagent-AI/agent-validator,3e1f3846ea65c02951f4c215b6f8671270cfa3b3,fix: move inline gate definitions under entry_points instead of top-level
+other_edit,IndustriousKraken/coterie,bdb024d583ecce5b436c787c1e66a32fbf33562f,spec rebuild: 34 capability(ies) rebuilt from 42 archived change(s)
+other_edit,Tzeusy/butlers,47fceaf1b647c71bee6fe9fd71f3da09c5f73796,docs(openspec): normalize legacy delta-headers to flat Purpose/Requirements (bu-hzr5x)
+other_edit,UlrichFrank/TeamWERK,3265d8389ec60c72cbdf691bb0d6a9fe1455c095,refactor(api): /admin entfernen und Spielplan-Routen auf /api/games konsolidieren
+other_edit,paradox123/shared-ai-docs,7f7050b11a6f6fda3112884b291ced275d09b543,Add mock evidence and session files for large and small test cases
+other_edit,cxyfer/oj-api-rs,521840da57b4f1ef692eb39d9891c187422bb70d,✨ feat(daily): add ?wait=true parameter to avoid polling on daily challenge (#8)

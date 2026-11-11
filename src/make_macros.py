@@ -71,6 +71,27 @@ def build(n):
               "numRenamePlainMatch": i(rn["archived"]["specmine_equals_plain"] + rn["living"]["specmine_equals_plain"]),
               "numRenameLivingChecked": i(rn["living"]["checked"]),
               "numRenameLivingTrue": i(rn["living"]["follow_hops"].get("living_rename", 0))}
+    if "revision_split" in n:   # s06_revision_split.py
+        rs = n["revision_split"]
+        t, t90, v = rs["type_by_placeholder"], rs["type_by_placeholder_min_age_90d"], rs["validation"]
+        m |= {"numRevisions": i(rs["revisions"]), "numArchiveMerges": i(rs["archive_merges"]),
+              "numOtherEdits": i(rs["other_edits"]),
+              "pctArchiveMerges": pct(rs["merge_share"]["p"]), "ciArchiveMerges": ci(rs["merge_share"]),
+              "numTypeMergeOnly": i(t["merge_only"]["total"]["k"]),
+              "pctTypeMergeOnly": pct(t["merge_only"]["total"]["p"]),
+              "numTypeEdited": i(t["edited"]["total"]["k"]),
+              "pctTypeEdited": pct(t["edited"]["total"]["p"]), "ciTypeEdited": ci(t["edited"]["total"]),
+              "numPhMergeOnly": i(t["merge_only"]["placeholder"]["k"]),
+              "pctPhMergeOnly": pct(t["merge_only"]["placeholder"]["p"]),
+              "ciPhMergeOnly": ci(t["merge_only"]["placeholder"]),
+              "numPhEdited": i(t["edited"]["placeholder"]["k"]),
+              "pctPhEdited": pct(t["edited"]["placeholder"]["p"]),
+              "pctTypeEditedOldNinety": pct(t90["edited"]["total"]["p"]),
+              "pctPhMergeOnlyOldNinety": pct(t90["merge_only"]["placeholder"]["p"]),
+              "numMedianOtherEdits": i(rs["other_edits_per_edited_spec"]["median"]),
+              "numPNinetyOtherEdits": i(rs["other_edits_per_edited_spec"]["p90"]),
+              "pctMsgArchiveMerge": pct(v["msg_archive"]["merge"]["p"]),
+              "pctMsgArchiveOther": pct(v["msg_archive"]["other"]["p"])}
     if "placeholder_flag" in n:
         p = n["placeholder_flag"]
         m |= {"pctFlagPrecision": pct(p["flag_vs_archive_any"]["precision"]),

@@ -135,6 +135,7 @@ bash src/run_all.sh ~/specmine_clones     # the argument is where s03 clones rep
 | `s03_check_renames.py` | Checks whether SpecMine's per-file history follows renames. It **clones about 30 small GitHub repositories** (blobless, network) into the folder given as argument (default `$TMPDIR/specmine_clones`, or `/tmp/specmine_clones`). | `renames`; `data/derived/rename_check.csv` |
 | `s04_sample_sizes.py` | Computes the sample sizes for coding (Cochran's formula with finite-population correction). | `sample_size` |
 | `s05_example_fossil.py` | Picks one example fossil with a fixed seed and anonymizes it (Fig. 2). | `results/example_fossil_spec.md` |
+| `s06_revision_split.py` | Splits the revisions of living specs into archive merges and other edits (RQ1), with message-based checks and 20 random revisions for a manual check. | `revision_split`; `data/derived/living_revisions.parquet`, `data/derived/revision_split_samples.csv` |
 | `make_macros.py` | Turns `numbers.json` into LaTeX macros. | `proposal/numbers.tex`, `report/numbers.tex` |
 
 A full run took **73 seconds** on the machine it was measured on (20 cores, 16 GB RAM, Linux, data already downloaded). Downloading the data adds the transfer time for about 2.1 GB.
@@ -143,7 +144,7 @@ After the run, `git diff results/numbers.json` should show only the known differ
 
 Known differences between runs (none of them reaches a paper or `numbers.tex`):
 - `placeholder_flag.flag_only_examples`: the list shows the 15 most frequent flagged Purpose texts. Texts with the same count (the last ones have 6) can swap in or out from one run to the next.
-- `repo_fossil.k3.mean` and `repo_fossil.k5.mean` can differ in the 16th to 17th digit (floating-point summation order).
+- `repo_fossil.k*.mean` (seen for k = 1, 3, 5 and 10) can differ in the 16th to 17th digit (floating-point summation order).
 - `results/figures/repo_fossil_rate.pdf` differs only in its creation date.
 
 If a new experiment adds numbers that must be exactly reproducible, make the script deterministic (add a tie-breaker to every sort, round stored values) and update this list.
