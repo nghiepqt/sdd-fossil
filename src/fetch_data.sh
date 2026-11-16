@@ -14,3 +14,6 @@ ZIP=https://zenodo.org/api/records/22102780/files/specmine.zip/content
 [ -f data/raw/zenodo/specs.jsonl.gz ] || \
   python -I src/zip_range_extract.py "$ZIP" specmine-zenodo/specs.jsonl.gz data/raw/zenodo/specs.jsonl.gz
 chmod a-w data/raw/*.parquet data/raw/zenodo/specs.jsonl.gz
+# Same bytes as the team's copy (SHA-256, computed 2026-11-15). Cite the concept DOI 10.5281/zenodo.22102779;
+# the files come from record 22102780 (version 1.0). Zenodo's md5 of specmine.zip: 86c8fa6249bafd220eafbdf89ca7231f.
+sha256sum --quiet -c data/CHECKSUMS.txt

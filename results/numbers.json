@@ -52,6 +52,113 @@
       }
     }
   },
+  "bootstrap": {
+    "B": 1000,
+    "method": "percentile bootstrap over repositories",
+    "metrics": {
+      "archive_merge_share_of_revisions": {
+        "ci_hi": 0.7057827354866735,
+        "ci_lo": 0.6533404638475738,
+        "k": 48557,
+        "n": 71407,
+        "p": 0.6800033610150266,
+        "se": 0.013399328635303855,
+        "width_ratio_boot_over_wilson": 7.6640001913968625,
+        "wilson_hi": 0.6834150160501214,
+        "wilson_lo": 0.6765723398589115
+      },
+      "edited": {
+        "ci_hi": 0.18462891305482526,
+        "ci_lo": 0.15672958699771458,
+        "k": 12487,
+        "n": 72971,
+        "p": 0.1711227748009483,
+        "se": 0.0070783177962981895,
+        "width_ratio_boot_over_wilson": 5.104985103228987,
+        "wilson_hi": 0.17387264423169438,
+        "wilson_lo": 0.168407530133817
+      },
+      "fossil": {
+        "ci_hi": 0.20771350184106535,
+        "ci_lo": 0.1848189652444024,
+        "k": 14294,
+        "n": 72971,
+        "p": 0.19588603691877596,
+        "se": 0.006033493604898649,
+        "width_ratio_boot_over_wilson": 3.9753291900330763,
+        "wilson_hi": 0.1987816231926369,
+        "wilson_lo": 0.19302246828942435
+      },
+      "fossil_min_age_90d": {
+        "ci_hi": 0.1849632457966165,
+        "ci_lo": 0.1528170528150983,
+        "k": 4520,
+        "n": 26887,
+        "p": 0.16811098300293822,
+        "se": 0.008116431192315057,
+        "width_ratio_boot_over_wilson": 3.5958244957084498,
+        "wilson_hi": 0.17262832814198206,
+        "wilson_lo": 0.1636884610767557
+      },
+      "merge_only": {
+        "ci_hi": 0.21049046701529137,
+        "ci_lo": 0.19141424556042172,
+        "k": 14697,
+        "n": 72971,
+        "p": 0.20140877882994615,
+        "se": 0.004956609258425482,
+        "width_ratio_boot_over_wilson": 3.2778799875029025,
+        "wilson_hi": 0.20433433828012185,
+        "wilson_lo": 0.19851465558045048
+      },
+      "never_revised": {
+        "ci_hi": 0.6423143272007447,
+        "ci_lo": 0.6116051800288385,
+        "k": 45787,
+        "n": 72971,
+        "p": 0.6274684463691055,
+        "se": 0.007731689001971577,
+        "width_ratio_boot_over_wilson": 4.377215991091691,
+        "wilson_hi": 0.630969576375442,
+        "wilson_lo": 0.6239538962640644
+      },
+      "never_revised_min_age_90d": {
+        "ci_hi": 0.6076205703740747,
+        "ci_lo": 0.5514925101522705,
+        "k": 15602,
+        "n": 26887,
+        "p": 0.5802804329229739,
+        "se": 0.0141947924010582,
+        "width_ratio_boot_over_wilson": 4.75778431872456,
+        "wilson_hi": 0.5861675148562375,
+        "wilson_lo": 0.5743704142602923
+      },
+      "placeholder": {
+        "ci_hi": 0.3104666154477767,
+        "ci_lo": 0.27504038533607283,
+        "k": 21325,
+        "n": 72971,
+        "p": 0.2922393827684971,
+        "se": 0.008805801261874061,
+        "width_ratio_boot_over_wilson": 5.368073822710352,
+        "wilson_hi": 0.2955500347172104,
+        "wilson_lo": 0.28895060421723695
+      },
+      "placeholder_revised": {
+        "ci_hi": 0.10744472749527786,
+        "ci_lo": 0.08647778032637009,
+        "k": 7031,
+        "n": 72971,
+        "p": 0.09635334584972112,
+        "se": 0.005302434943752433,
+        "width_ratio_boot_over_wilson": 4.896543112287086,
+        "wilson_hi": 0.09851558900862958,
+        "wilson_lo": 0.09423359930934672
+      }
+    },
+    "repos": 6085,
+    "seed": 20261115
+  },
   "cohort": {
     "cohort_specs": 468163,
     "commit_rows_for_files_not_in_spec_files": 41170,
@@ -180,9 +287,9 @@
       "TBD - created while syncing archived changes. Update Purpose after archive.": 7,
       "TBD - normalized from existing baseline requirements.": 19,
       "TBD \u2014 restored after delta-sync structural cleanup. Update Purpose with a one-line statement of what this capability own": 268,
-      "TBD \u2014 see change project-quality-foundation for full context.": 6,
       "TBD.": 11,
-      "TBD: created by syncing change 'bidi-core-coverage-and-selenium'. Update Purpose to describe this capability.": 9
+      "TBD: created by syncing change 'bidi-core-coverage-and-selenium'. Update Purpose to describe this capability.": 9,
+      "TBD: created by syncing change 'browser-bidi-extension'. Update Purpose to describe this capability.": 6
     },
     "flag_vs_archive_any": {
       "fn": 0,
@@ -268,7 +375,7 @@
     },
     "k3": {
       "living_specs_covered": 70921,
-      "mean": 0.20542362370067918,
+      "mean": 0.2054236237006792,
       "median": 0.0,
       "repos": 4618,
       "share_extreme": 0.7016024252923343,
@@ -593,15 +700,66 @@
   },
   "sample_size": {
     "confidence": 0.95,
+    "edited": {
+      "n_margin_05": 373,
+      "n_margin_10": 96,
+      "population": 12487
+    },
     "fossil": {
       "n_margin_05": 375,
       "n_margin_10": 96,
       "population": 14294
+    },
+    "fossil_archive_text": {
+      "n_margin_05": 374,
+      "n_margin_10": 96,
+      "population": 13426
     },
     "revised": {
       "n_margin_05": 379,
       "n_margin_10": 96,
       "population": 27184
     }
+  },
+  "samples": {
+    "cap_per_repo": 3,
+    "double_per_group": 100,
+    "fallback_per_group": 50,
+    "groups": {
+      "edited": {
+        "drawn": 373,
+        "eligible_after_cap": 4565,
+        "max_specs_per_repo": 3,
+        "median_age_days": 76.0,
+        "population": 12487,
+        "population_repos": 2080,
+        "repos_in_sample": 289,
+        "splits": {
+          "double": 100,
+          "llm_only": 258,
+          "pilot": 15
+        },
+        "target_cochran_05": 373,
+        "under_30d_in_coded": 15
+      },
+      "fossil": {
+        "drawn": 374,
+        "eligible_after_cap": 5239,
+        "max_specs_per_repo": 3,
+        "median_age_days": 59.0,
+        "population": 13426,
+        "population_repos": 2309,
+        "repos_in_sample": 295,
+        "splits": {
+          "double": 100,
+          "llm_only": 259,
+          "pilot": 15
+        },
+        "target_cochran_05": 374,
+        "under_30d_in_coded": 32
+      }
+    },
+    "pilot_per_group": 15,
+    "seed": 20261114
   }
 }

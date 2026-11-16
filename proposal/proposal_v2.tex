@@ -141,7 +141,8 @@ commit that touches the file after its creation commit. We separate
 \emph{archive merges}, the revisions written by OpenSpec's archive step (commits that also create a file under
 \fp{changes/archive/}), from other edits. An archive merge follows automatically from
 archiving a change, so it says little about whether anyone chose to maintain the spec;
-other edits are deliberate. A
+other edits are deliberate. A living spec is \emph{maintained} if it has at least one
+other edit. A
 \emph{fossil} is a living spec whose snapshot content holds an unfilled placeholder and
 that has zero revisions.
 
@@ -152,7 +153,7 @@ finished specs with forgotten ones, and the placeholder helps tell them apart.
 \emph{Approach:} revisions per living spec, split into archive merges and other edits; the
 shares of fossils, of specs whose placeholder survived a revision and of specs without one,
 among all living specs and among specs born with the placeholder (to be decided); Wilson
-95\% CIs (or a bootstrap over repositories: to be decided).
+95\% CIs, and 95\% CIs from a bootstrap over repositories ($B=\numBootB$), as fossils cluster.
 \emph{Baselines:} archived specs, frozen by design (\pctArchivedNeverRevised never
 revised), and delta specs; the naive measure; a no-placeholder control group.
 \emph{Robustness:} file age: \pctLivingYoungThirty of living specs are under 30 days old,
@@ -160,8 +161,8 @@ so we re-run every result without specs younger than 30, 60 and 90 days (for spe
 least 90 days old, \pctNeverRevisedOldNinety were never revised and \pctFossilOldNinety are
 fossils); repository dominance: per-repository caps and leave-largest-out.
 
-\textbf{RQ2: What characterizes living specs that are revised?} \emph{Motivation:}
-revised specs show what maintenance looks like in practice.
+\textbf{RQ2: What characterizes maintained living specs?} \emph{Motivation:}
+maintained specs show what maintenance looks like in practice.
 \emph{Approach:} the time to first revision (Kaplan--Meier, censored at the
 snapshot), who revised (human, agent or bot), whether each revision was an archive
 merge or another edit and, on the sample, the spec category (both defined below). For \emph{fixed} specs (first
@@ -176,15 +177,16 @@ created in the same commit) and, on the sample, the spec category, completeness 
 whether the code the spec describes changed later. \emph{Baselines:} never-revised specs
 without a placeholder; inactive repositories separate forgotten from finished specs.
 
-\textbf{RQ4: How do revised living specs and fossils differ?} \emph{Motivation:}
+\textbf{RQ4: How do maintained living specs and fossils differ?} \emph{Motivation:}
 the contrast shows which traits go with maintenance. \emph{Approach:} we compare
 the two groups on the features of RQ2--RQ3 with $\chi^2$ tests and Cram\'er's~$V$, and
-report never-revised specs without a placeholder as a third group (to be decided). \emph{Baseline:} the
+report specs revised only by archive merges as a third group, as shares only. \emph{Baseline:} the
 naive split into never-revised and revised specs.
 
-\paragraph{Sampling and coding} Per repository, we sample at most one fossil and one
-revised spec, with a fixed seed: about \numSampleFossils fossils and \numSampleRevised
-revised specs (\pctConfSample confidence, $\pm$5\%). \emph{Spec category:} we reuse
+\paragraph{Sampling and coding} Per repository, we sample at most \numSampleCap fossils and \numSampleCap maintained
+specs, with a fixed seed: \numSampleFossilsCoded fossils, drawn from the \numFossilsCodedPop
+whose text holds the archive placeholder, and \numSampleEdited maintained specs
+(\pctConfSample confidence, $\pm$5\%). \emph{Spec category:} we reuse
 the taxonomy and judge prompts of SpecMine~\cite{specmine_paper}:
 requirements content (problem, behaviour, acceptance, constraints, stakeholders) and
 implementation content (architecture, plan, code, conventions), each with an extent from
@@ -192,7 +194,7 @@ none to dominant, and the kind of work (purpose: feat, fix, refactor, style, per
 docs, test, ci, build, chore). We add our own dimension, completeness (complete
 except Purpose, skeletal, near-empty). Both students code a pilot of 30 specs to check
 whether the taxonomy fits living specs, which describe a system as it stands, or needs
-extending, then double-code 100 (Cohen's~$\kappa$). An LLM (temperature~0, tuned
+extending, then double-code \numDoublePerGroup per group (Cohen's~$\kappa$). An LLM (temperature~0, tuned
 on the pilot only) labels the rest if it reaches $\kappa \geq 0.6$ on held-out human
 labels. A planned extension compares tools without archived
 specs, as only OpenSpec encodes lifecycle roles~\cite{specmine_paper}.

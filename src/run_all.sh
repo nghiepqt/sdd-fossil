@@ -10,7 +10,9 @@ $PY src/s00_headline.py
 $PY src/s01_repo_fossil_dist.py
 $PY src/s02_verify_placeholder_flag.py
 GIT_TERMINAL_PROMPT=0 $PY src/s03_check_renames.py "$SCRATCH"
-$PY src/s04_sample_sizes.py
 $PY src/s05_example_fossil.py
 $PY src/s06_revision_split.py
+$PY src/s04_sample_sizes.py    # needs s02 and s06
+$PY src/s07_bootstrap.py
+$PY src/s08_draw_samples.py
 $PY src/make_macros.py

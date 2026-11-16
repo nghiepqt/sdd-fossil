@@ -65,6 +65,28 @@ def build(n):
               "numSampleFossilsTen": i(s["fossil"]["n_margin_10"]),
               "numSampleRevised": i(s["revised"]["n_margin_05"]),
               "numSampleRevisedTen": i(s["revised"]["n_margin_10"])}
+    if "sample_size" in n and "edited" in n["sample_size"]:
+        s = n["sample_size"]
+        m |= {"numFossilsCodedPop": i(s["fossil_archive_text"]["population"]),
+              "numSampleFossilsCoded": i(s["fossil_archive_text"]["n_margin_05"]),
+              "numSampleEdited": i(s["edited"]["n_margin_05"])}
+    if "bootstrap" in n:   # s07_bootstrap.py
+        b = n["bootstrap"]
+        bm = b["metrics"]
+        m |= {"numBootB": i(b["B"]), "numBootRepos": i(b["repos"]),
+              "bciNeverRevised": ci(bm["never_revised"]), "bciPlaceholder": ci(bm["placeholder"]),
+              "bciFossil": ci(bm["fossil"]), "bciPlaceholderRevised": ci(bm["placeholder_revised"]),
+              "bciTypeEdited": ci(bm["edited"]), "bciTypeMergeOnly": ci(bm["merge_only"]),
+              "bciArchiveMerges": ci(bm["archive_merge_share_of_revisions"]),
+              "bciFossilOldNinety": ci(bm["fossil_min_age_90d"])}
+    if "samples" in n:   # s08_draw_samples.py
+        sp = n["samples"]
+        g = sp["groups"]
+        m |= {"numSampleCap": i(sp["cap_per_repo"]),
+              "numPilot": i(2 * sp["pilot_per_group"]), "numDoubleCode": i(2 * sp["double_per_group"]),
+              "numDoublePerGroup": i(sp["double_per_group"]), "numFallbackPerGroup": i(sp["fallback_per_group"]),
+              "numSampleFossilRepos": i(g["fossil"]["repos_in_sample"]),
+              "numSampleEditedRepos": i(g["edited"]["repos_in_sample"])}
     if "renames" in n:
         rn = n["renames"]
         m |= {"numRenameChecked": i(rn["checked"]),

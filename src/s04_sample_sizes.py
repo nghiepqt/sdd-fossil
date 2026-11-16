@@ -4,8 +4,13 @@ Cochran's formula for a proportion at its most conservative value (p = 0.5), wit
 finite-population correction, rounded up:
     n0 = z^2 * p * (1 - p) / e^2,   n = n0 / (1 + (n0 - 1) / N).
 
-Populations come from results/numbers.json (section "headline", written by s00_headline.py):
-fossils = headline.fossil.k; revised living specs = living - never_revised.k.
+Populations come from results/numbers.json:
+- fossil = headline.fossil.k (s00); revised = living - never_revised.k (s00);
+- fossil_archive_text = placeholder_flag.fossils_by_archive_text (s02): fossils whose snapshot text holds the
+  OpenSpec archive placeholder. The flag contains every such spec (recall 1.0), so this is the intersection of
+  the flag and the archive text, the population the coded fossil sample is drawn from (decision 2026-11-12, item 2);
+- edited = revision_split.type_by_placeholder.edited.total.k (s06): living specs with >= 1 other edit, the
+  "maintained" group of RQ4 (decision 2026-11-12, item 5).
 Writes section "sample_size" of results/numbers.json.
 """
 import json
@@ -26,10 +31,13 @@ def cochran_fpc(N, e, confidence=CONFIDENCE, p=0.5):
 
 
 def main():
-    h = json.loads(NUMBERS.read_text())["headline"]
+    n = json.loads(NUMBERS.read_text())
+    h = n["headline"]
     populations = {
         "fossil": h["fossil"]["k"],
         "revised": h["living"] - h["never_revised"]["k"],
+        "fossil_archive_text": n["placeholder_flag"]["fossils_by_archive_text"],
+        "edited": n["revision_split"]["type_by_placeholder"]["edited"]["total"]["k"],
     }
     out = {"confidence": CONFIDENCE}
     for group, N in populations.items():

@@ -39,11 +39,15 @@ maintained, or written once and forgotten? The full plan is in
 - Sample sizes for manual coding (95% confidence, ±5%): 375 fossils and 379 revised specs.
 - The proposal was revised after the instructor's 11 comments: four RQs, and a category taxonomy taken from the SpecMine paper. See [`proposal/response_to_comments.md`](proposal/response_to_comments.md).
 
+**Done (November 10–15, 2026).**
+- RQ1 revision split (`s06`): 68.0% of the 71,407 revisions of living specs are archive merges. 17.1% of living specs (12,487) have at least one other edit; we call them *maintained*. 20.1% were revised only by archive merges.
+- Repository cluster bootstrap (`s07`, B = 1,000): its 95% CIs are 3 to 8 times wider than the Wilson CIs, e.g. fossils 19.6% [18.5, 20.8] vs Wilson [19.3, 19.9]. Report both.
+- Coding samples (`s08`, at most 3 specs per repository and group): 374 fossils and 373 maintained specs. They split into a 30-spec pilot, 200 specs for double coding, and the rest for the LLM. See [`labels/README.md`](labels/README.md).
+- Decisions of Nov 12 applied: "maintained" = at least one other edit; the dataset DOI; the bootstrap; "34%–67%" dropped.
+
 **Not done yet.**
-- RQ1:
-  - the split of revisions into archive merges and other edits;
-  - the robustness runs (file age, repository caps).
-- Drawing the samples and the 30-spec taxonomy pilot.
+- RQ1 robustness runs for repository dominance (per-repository caps, leave-largest-out).
+- The 30-spec taxonomy pilot (students; the sheets are ready in `labels/`).
 - Double coding (Cohen's κ) and the LLM labelling pipeline.
 - Cloning repositories to find *fixed* specs and later code changes.
 - RQ2–RQ4 (Kaplan–Meier, χ² / Cramér's V).
@@ -51,12 +55,7 @@ maintained, or written once and forgotten? The full plan is in
 
 The dated plan is Fig. 3 of the proposal: numbers are frozen on Nov 22, the presentation is on Nov 26, the report and the MSR abstract are due on Dec 18, and the MSR paper on Dec 23.
 
-**Open decisions.** See [`proposal/open_issues.md`](proposal/open_issues.md), section A:
-- which groups RQ4 compares (A1);
-- the bootstrap CIs and the unsourced "34%–67%" figure from the submitted proposal (A3);
-- the dataset DOI (A4).
-
-Text in the proposal marked "(to be decided)" depends on these decisions.
+**Decisions.** A1, A3 and A4 in [`proposal/open_issues.md`](proposal/open_issues.md) were settled on Nov 12 and are applied (see the update notes there). One "(to be decided)" is left in the proposal: whether RQ1 also reports shares among specs born with the placeholder.
 
 ## Setup
 
@@ -98,7 +97,9 @@ pip install -r requirements.txt
 | `spec_file_commits.parquet` | same | 423 MB |
 | `spec_content_features.parquet` | same | 11 MB |
 | `repo_trees.parquet` | same | 1.5 MB |
-| `zenodo/specs.jsonl.gz` (snapshot text of every spec) | Zenodo record 22102780. HTTP range requests fetch only this member of the 5.4 GB zip. | 998 MB |
+| `zenodo/specs.jsonl.gz` (snapshot text of every spec) | Zenodo record 22102780 (version 1.0). HTTP range requests fetch only this member of the 5.4 GB zip. | 998 MB |
+
+**Citing the dataset.** Cite the concept DOI [10.5281/zenodo.22102779](https://doi.org/10.5281/zenodo.22102779) as "SpecMine v1.0 (July 2026 snapshot)", as the SpecMine README asks. The files come from record 22102780, the version DOI of v1.0 (checked with the Zenodo API on 2026-11-15). `fetch_data.sh` ends by checking every raw file against the SHA-256 sums in [`data/CHECKSUMS.txt`](data/CHECKSUMS.txt). Zenodo's md5 for the full `specmine.zip` is `86c8fa6249bafd220eafbdf89ca7231f`.
 
 Disk use:
 - raw data: about **2.1 GB**;
@@ -133,12 +134,14 @@ bash src/run_all.sh ~/specmine_clones     # the argument is where s03 clones rep
 | `s01_repo_fossil_dist.py` | Computes the fossil rate per repository and draws Fig. 4 of the proposal. | `repo_fossil`; `results/figures/repo_fossil_rate.pdf` |
 | `s02_verify_placeholder_flag.py` | Checks SpecMine's placeholder flag against the OpenSpec placeholder text over all living specs (reads `specs.jsonl.gz`). | `placeholder_flag`; `data/derived/living_content.parquet` |
 | `s03_check_renames.py` | Checks whether SpecMine's per-file history follows renames. It **clones about 30 small GitHub repositories** (blobless, network) into the folder given as argument (default `$TMPDIR/specmine_clones`, or `/tmp/specmine_clones`). | `renames`; `data/derived/rename_check.csv` |
-| `s04_sample_sizes.py` | Computes the sample sizes for coding (Cochran's formula with finite-population correction). | `sample_size` |
 | `s05_example_fossil.py` | Picks one example fossil with a fixed seed and anonymizes it (Fig. 2). | `results/example_fossil_spec.md` |
 | `s06_revision_split.py` | Splits the revisions of living specs into archive merges and other edits (RQ1), with message-based checks and 20 random revisions for a manual check. | `revision_split`; `data/derived/living_revisions.parquet`, `data/derived/revision_split_samples.csv` |
+| `s04_sample_sizes.py` | Computes the sample sizes for coding (Cochran's formula with finite-population correction). Runs after `s06`, as it needs the archive-text fossils (`s02`) and the maintained specs (`s06`). | `sample_size` |
+| `s07_bootstrap.py` | Computes 95% CIs from a bootstrap over repositories (B = 1,000, fixed seed) for the RQ1 shares, next to the Wilson CIs. | `bootstrap` |
+| `s08_draw_samples.py` | Draws the coding samples (fossils vs maintained specs, at most 3 per repository, fixed seed) and writes blind coding sheets. | `samples`; `labels/` |
 | `make_macros.py` | Turns `numbers.json` into LaTeX macros. | `proposal/numbers.tex`, `report/numbers.tex` |
 
-A full run took **73 seconds** on the machine it was measured on (20 cores, 16 GB RAM, Linux, data already downloaded). Downloading the data adds the transfer time for about 2.1 GB.
+A full run took **about 3 minutes** (wall clock, on 2026-11-15) on the machine it was measured on (20 cores, 16 GB RAM, Linux, data already downloaded). This includes the `s03` clones over the network. Downloading the data adds the transfer time for about 2.1 GB.
 
 After the run, `git diff results/numbers.json` should show only the known differences below. Anything else: tell the team before using any number.
 

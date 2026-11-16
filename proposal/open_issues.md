@@ -8,6 +8,8 @@ These are the points the agent could not settle without the team. Sections A and
 
 ### A1. Which groups RQ4 compares
 
+> **Update (2026-11-15): decided (decision brief of 2026-11-12, item 5; no objection by the deadline).** A living spec is **maintained** when it has at least one *other edit* (a revision that is not an archive merge; `s06`). The main contrast of RQ4 is **edited** (12,487, `\numTypeEdited`) vs **fossil** (14,294). `merge_only` specs (14,697, `\numTypeMergeOnly`) are reported as shares only and are not sampled for coding. The fossil definition is unchanged. Samples are capped at 3 specs per repository (`src/s08_draw_samples.py`). The text below is kept for the record.
+
 "Revised living specs" and "fossils" do not cover all living specs. The 72,971 living specs split into:
 
 | Group | Definition | Count | Source |
@@ -39,6 +41,8 @@ Also note: today (Nov 9) is the start of week 7. The plan shows RQ2/RQ3 and the 
 
 ### A3. Content in the submitted PDF with no source in code
 
+> **Update (2026-11-15): decided (decision brief item 6).** "34%–67%" is dropped for good; we do not reconstruct it. The repository cluster bootstrap is restored: `src/s07_bootstrap.py` resamples repositories with replacement (B = 1,000, fixed seed) and writes section `bootstrap` of `numbers.json`. We report it next to the Wilson CIs. The text below is kept for the record.
+
 | Item in the submitted PDF | Script found? | What v2 does |
 |---|---|---|
 | "among specs born with the placeholder (**34%–67%** from snapshot data)" (old RQ2) | **No.** Nothing in `src/` or `results/numbers.json`. | The number is removed. The planned analysis ("among specs born with the placeholder") is kept, without a number. |
@@ -56,6 +60,8 @@ If the team confirms this was the intended definition, we can add it to a script
 **Bootstrap.** This was a planned method, not a reported value. The team's rule is not to drop a planned analysis without asking, so please decide whether to restore it. Restoring it costs one clause in RQ1 and needs no number. Fig. 1 does show that fossils cluster by repository, which is the reason a cluster bootstrap was proposed. The repository-dominance robustness check (per-repository caps, leave-largest-out) remains in v2.
 
 ### A4. Dataset DOI mismatch
+
+> **Update (2026-11-15): decided and checked.** The Zenodo API for record 22102780 returns `conceptdoi = 10.5281/zenodo.22102779`, `doi = 10.5281/zenodo.22102780`, `version = 1.0`. We cite the concept DOI **22102779** as "SpecMine v1.0 (July 2026 snapshot)", and the bib note names record 22102780 as the exact version. `fetch_data.sh` still downloads from record 22102780 and now checks the SHA-256 of every raw file against `data/CHECKSUMS.txt`. The text below is kept for the record.
 
 | Source | DOI |
 |---|---|
