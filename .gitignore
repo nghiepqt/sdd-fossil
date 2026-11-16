@@ -28,3 +28,4 @@ proposal/proposal.pdf
 
 # Local virtual environment
 .venv/
+Claude_outputs/
