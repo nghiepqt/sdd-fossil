@@ -510,7 +510,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     <div class="cheat">
       <b>Quick rules:</b>
-      <b>Extent:</b> none=absent | incidental=1–2 lines | substantial=section/several statements | dominant=most of doc. Empty headings &amp; TBD Purpose don't count.<br/>
+      <b>Extent (share of body lines, Purpose excluded):</b> none=0 | incidental=&lt;10% and no dedicated section (a single line is always at most incidental) | substantial=10–50% or a dedicated non-Requirement/Scenario section with &ge;2 lines | dominant=&gt;50%. Empty headings don't count.<br/>
       <span id="cheatCompleteness"><b>Completeness:</b> <i>complete</i>=all filled + real Purpose | <i>complete_except_purpose</i>=reqs &amp; scenarios filled, Purpose missing/TBD | <i>skeletal</i>=headings/titles only or one-liners / missing scenarios | <i>near_empty</i>=almost nothing.</span><br/>
       <b>Work vs System:</b> SHALL &amp; TBD Purpose are NOT work signals. No clear signal → FALSE + note <code>default</code>.
     </div>

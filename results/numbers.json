@@ -274,8 +274,17 @@
     "top_fossil_repo_share": 0.00937456275360291
   },
   "pilot": {
-    "assumed_row_order": {
-      "coder2": true
+    "body_lines_by_group": {
+      "edited": {
+        "median": 50.0,
+        "p25": 24.0,
+        "p75": 102.0
+      },
+      "fossil": {
+        "median": 25.0,
+        "p25": 15.0,
+        "p75": 46.75
+      }
     },
     "codebook": "v0 (pilot)",
     "fields": {
@@ -406,6 +415,9 @@
       ],
       "n": 10,
       "seed": 20261119
+    },
+    "row_order_from_position": {
+      "coder2": "row n = item Pnn, confirmed by coder 2 on 2026-11-19"
     },
     "taxonomy_b_stop_rule": {
       "coder1": {

@@ -12,7 +12,7 @@ Steps:
    open it while coding.
 2. Agreement of the two pilot coders under codebook v0 (raw agreement, Cohen's kappa; linear-weighted
    kappa for the ordinal extents) and the stop rule for taxonomy B -> section "pilot" of numbers.json.
-   Coder 2's sheet has no item_id column; row n is taken to be item Pnn (ASSUMED_ROW_ORDER below).
+   Coder 2's sheet has no item_id column; row n is item Pnn (confirmed by coder 2 on 2026-11-19).
 3. The recheck set: the N_RECHECK pilot items on which the coders disagreed most, as an empty v1 sheet in
    labels/pilot/recheck/ (with a copy of their spec files, so that src/label_ui.py can open it).
 
@@ -30,7 +30,7 @@ from common import DERIVED, ROOT, connect, update_numbers
 LABELS = ROOT / "labels"
 PILOT = LABELS / "pilot"
 CODER_SHEETS = {"coder1": PILOT / "coding_sheet_person1.csv", "coder2": PILOT / "coding_sheet_person2.csv"}
-ASSUMED_ROW_ORDER = {"coder2": True}  # sheet without item_id: row n = item Pnn (not yet confirmed by coder 2)
+ROW_ORDER_FROM_POSITION = {"coder2": "row n = item Pnn, confirmed by coder 2 on 2026-11-19"}
 SEED = 20261119
 N_RECHECK = 10
 EXTENT = ["none", "incidental", "substantial", "dominant"]
@@ -65,11 +65,18 @@ def purpose_status(text):
     return "filled"
 
 
+def body_lines(text):
+    """Lines with content in the body: no headings, no blank lines, no Purpose section, no item header."""
+    text = RE_PURPOSE.sub("", text)
+    return sum(1 for ln in text.splitlines()
+               if ln.strip() and not ln.lstrip().startswith("#") and not ln.startswith("<!-- item "))
+
+
 def structure(text):
     """Requirement and scenario counts; requirements without a scenario before the next requirement/section."""
     blocks = re.split(r"(?=^###\s+Requirement:)", text, flags=re.M | re.I)[1:]
     no_scen = sum(1 for b in blocks if not RE_SCEN.search(re.split(r"^##\s", b, maxsplit=1, flags=re.M)[0]))
-    return {"n_requirements": len(RE_REQ.findall(text)), "n_scenarios": len(RE_SCEN.findall(text)),
+    return {"n_body_lines": body_lines(text), "n_requirements": len(RE_REQ.findall(text)), "n_scenarios": len(RE_SCEN.findall(text)),
             "n_requirements_without_scenario": no_scen, "n_delta_headers": len(RE_DELTA.findall(text)),
             "n_code_blocks": len(RE_FENCE.findall(text)) // 2}
 
@@ -83,14 +90,16 @@ def auto_features(con):
     out = pd.DataFrame(rows).sort_values("item_id")
     out.to_csv(LABELS / "auto_features.csv", index=False)
     by = frame[["item_id", "group"]].merge(out, on="item_id")
-    return out, {g: {k: int(v) for k, v in d.purpose_status.value_counts().items()}
-                 for g, d in by.groupby("group")}
+    status = {g: {k: int(v) for k, v in d.purpose_status.value_counts().items()} for g, d in by.groupby("group")}
+    lines = {g: {q: float(d.n_body_lines.quantile(x)) for q, x in (("p25", .25), ("median", .5), ("p75", .75))}
+             for g, d in by.groupby("group")}
+    return out, status, lines
 
 
 def read_sheet(name, path):
     df = pd.read_csv(path, dtype=str, encoding="utf-8-sig").fillna("")
     if "item_id" not in df.columns:
-        if not ASSUMED_ROW_ORDER.get(name):
+        if not ROW_ORDER_FROM_POSITION.get(name):
             raise ValueError(f"{path} has no item_id column")
         idcol = df.columns[0]
         df["item_id"] = [f"P{int(x):02d}" for x in df[idcol]]
@@ -165,13 +174,14 @@ def recheck_set(a, b, rng):
 
 def main():
     con = connect()
-    feats, status_by_group = auto_features(con)
-    result = {"codebook": "v0 (pilot)", "purpose_status_by_group": status_by_group}
+    feats, status_by_group, lines_by_group = auto_features(con)
+    result = {"codebook": "v0 (pilot)", "purpose_status_by_group": status_by_group,
+              "body_lines_by_group": lines_by_group}
     if all(p.exists() for p in CODER_SHEETS.values()):
         sheets = {k: read_sheet(k, p) for k, p in CODER_SHEETS.items()}
         agree, stop, a, b = pilot_agreement(sheets)
         ids, scores = recheck_set(a, b, np.random.default_rng(SEED))
-        result.update({"items": 30, "assumed_row_order": ASSUMED_ROW_ORDER, "fields": agree,
+        result.update({"items": 30, "row_order_from_position": ROW_ORDER_FROM_POSITION, "fields": agree,
                        "taxonomy_b_stop_rule": stop,
                        "recheck": {"seed": SEED, "n": len(ids), "items": ids, "disagreement_score": scores}})
     else:

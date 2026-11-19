@@ -14,7 +14,7 @@ This README is written by hand. No script overwrites it.
 | Path | Content |
 |---|---|
 | `sample_frame.csv` | **The key.** One row per sampled spec: neutral `item_id`, `group` (fossil / edited), `split`, `batch`, repository, path, GitHub URL at the snapshot commit, age, revision counts. Coders must not open it while coding. |
-| `auto_features.csv` | Computed by s09 for every sampled spec: `purpose_status` and structural counts (requirements, scenarios, requirements without a scenario, delta headers, code blocks). **It reveals the group** (fossils are all `tbd_archive`). Coders must not open it while coding. |
+| `auto_features.csv` | Computed by s09 for every sampled spec: `purpose_status` and structural counts (body lines, requirements, scenarios, requirements without a scenario, delta headers, code blocks). **It reveals the group** (fossils are all `tbd_archive`). Coders must not open it while coding. |
 | `pilot/specs/P01.md … P30.md` | Snapshot text of the 30 pilot specs (15 fossils + 15 edited, shuffled). First line: item ID and GitHub URL. |
 | `pilot/coding_sheet_TEMPLATE.csv` | Pilot sheet, **codebook v0** (kept as coded). |
 | `pilot/coding_sheet_person1.csv`, `person2.csv` | The two pilot coders' v0 labels. |
@@ -85,16 +85,32 @@ Notes:
 
 ### Rule 3: extent scale
 
-**Unit: lines with content in the body.** Do not count headings, blank lines or the Purpose section. Put each line in one category by its main content (Rule 4). An estimate is enough; count only when you are unsure between two levels. For very long specs, estimate per section.
+**Unit: share of the lines with content in the body.** Do not count headings, blank lines or the Purpose section. Put each line in one category by its main content (Rule 4). Decide by **share, not by absolute count**, so that short and long specs are rated alike. An estimate is enough ("under a tenth, up to half, or more than half of the body?"); count only when you are unsure between two levels. For very long specs, estimate per section.
 
 | Level | Rule |
 |---|---|
 | `none` | 0 lines |
-| `incidental` | 1–2 lines, or under 10% of the body |
-| `substantial` | 3 lines or more, or a dedicated section, but at most 50% of the body |
+| `incidental` | more than 0 and under 10% of the body, **and** no dedicated section |
+| `substantial` | 10–50% of the body, **or** a dedicated section (below) even if under 10% |
 | `dominant` | more than 50% of the body |
 
+**Floor rule:** a single line is never more than `incidental`, whatever its share (e.g. one line naming a file in a 5-line spec).
+
+**Dedicated section.** A heading whose content is mostly of one category. It counts only if all three hold:
+1. It is a real heading (`##`, `###`, …) chosen by the author.
+2. It is **outside** the standard OpenSpec structure: `### Requirement:` and `#### Scenario:` headings never count, since every spec has them. Classify the lines inside them one by one, as usual.
+3. It has **2 or more lines** of content, mostly of the same category. An empty or one-line section does not count.
+
+| Counts (usually implementation) | Does not count |
+|---|---|
+| `## Data Model` listing tables and columns | `### Requirement: User login` with one THEN line naming a function: only that line is implementation |
+| `## Architecture`, `## Technical Design`, `## Implementation Notes` | A code block between requirements without its own heading: count its lines |
+| `## File Structure` with a directory tree | `## Notes` holding the single line "uses Redis" |
+| `### Database Schema` with an SQL block | |
+
 The two extents are rated independently and need not add up to 100% (some lines are neither, e.g. glossary or references).
+
+Fossils are about half as long as edited specs (median body length by group: `results/numbers.json`, `pilot.body_lines_by_group`). The analysis therefore also compares the groups within length strata, using `n_body_lines` from `auto_features.csv`.
 
 ### Rule 4: requirement or implementation?
 
@@ -139,7 +155,7 @@ Leftover delta headers (`## ADDED Requirements` and similar) are counted by s09 
 
 ## Codebook v0 (pilot only, kept for the record)
 
-The pilot sheets use v0: `completeness` with `complete` / `complete_except_purpose` / `skeletal` / `near_empty` (Purpose included), plus taxonomy B. The v0 extent scale had no unit and no rule for mixed content. s09 reports v0 agreement in `results/numbers.json`, section `pilot`. Coder 2's sheet has no `item_id` column, so s09 takes row n to be item Pnn (`assumed_row_order`). This is still to be confirmed by coder 2.
+The pilot sheets use v0: `completeness` with `complete` / `complete_except_purpose` / `skeletal` / `near_empty` (Purpose included), plus taxonomy B. The v0 extent scale had no unit and no rule for mixed content. s09 reports v0 agreement in `results/numbers.json`, section `pilot`. Coder 2's sheet has no `item_id` column; row n is item Pnn, as coder 2 confirmed on 2026-11-19 (`row_order_from_position`).
 
 ## Who writes what
 
