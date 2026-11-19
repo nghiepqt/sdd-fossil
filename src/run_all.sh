@@ -15,4 +15,5 @@ $PY src/s06_revision_split.py
 $PY src/s04_sample_sizes.py    # needs s02 and s06
 $PY src/s07_bootstrap.py
 $PY src/s08_draw_samples.py
+$PY src/s09_pilot_codebook.py   # needs s08 and the two pilot coder sheets
 $PY src/make_macros.py

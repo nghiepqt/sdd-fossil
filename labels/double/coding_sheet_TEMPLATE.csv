@@ -1,4 +1,4 @@
-item_id,batch,file_url,is_spec,requirements_extent,implementation_extent,completeness,note
+item_id,batch,file_url,is_spec,requirements_extent,implementation_extent,body_completeness,note
 D001,1,https://github.com/testpress/cortex/blob/81d33f3c1b82ec30000a5815b672800421269fd1/openspec/specs/attachment-downloads-sync/spec.md,,,,,
 D002,1,https://github.com/BlackBeltTechnology/pi-agent-dashboard/blob/e0cb86810d14e94354f798192793bbe980122c07/openspec/specs/confirm-dialog/spec.md,,,,,
 D003,1,https://github.com/Tzeusy/butlers/blob/da1aa682dbf1fe966e2f7df89541be52e745229a/openspec/specs/module-google-drive/spec.md,,,,,

@@ -47,7 +47,7 @@ maintained, or written once and forgotten? The full plan is in
 
 **Not done yet.**
 - RQ1 robustness runs for repository dominance (per-repository caps, leave-largest-out).
-- The 30-spec taxonomy pilot (students; the sheets are ready in `labels/`).
+- Codebook v1 recheck (10 pilot items, `labels/pilot/recheck/`), then double coding with v1. The pilot was coded with v0 on 2026-11-19; agreement was too low (κ ≤ 0.12), and taxonomy B was dropped by its stop rule. See [`labels/README.md`](labels/README.md).
 - Double coding (Cohen's κ) and the LLM labelling pipeline.
 - Cloning repositories to find *fixed* specs and later code changes.
 - RQ2–RQ4 (Kaplan–Meier, χ² / Cramér's V).
@@ -139,6 +139,8 @@ bash src/run_all.sh ~/specmine_clones     # the argument is where s03 clones rep
 | `s04_sample_sizes.py` | Computes the sample sizes for coding (Cochran's formula with finite-population correction). Runs after `s06`, as it needs the archive-text fossils (`s02`) and the maintained specs (`s06`). | `sample_size` |
 | `s07_bootstrap.py` | Computes 95% CIs from a bootstrap over repositories (B = 1,000, fixed seed) for the RQ1 shares, next to the Wilson CIs. | `bootstrap` |
 | `s08_draw_samples.py` | Draws the coding samples (fossils vs maintained specs, at most 3 per repository, fixed seed) and writes blind coding sheets. | `samples`; `labels/` |
+| `s09_pilot_codebook.py` | Computes `purpose_status` and structural counts for every sampled spec, the pilot coders' agreement (codebook v0) and the taxonomy-B stop rule, and writes the codebook-v1 recheck sheet. | `pilot`; `labels/auto_features.csv`, `labels/pilot/recheck/` |
+| `label_ui.py` | Local web UI for coding a sheet (v0 or v1). Not part of `run_all.sh`. | coder sheets |
 | `make_macros.py` | Turns `numbers.json` into LaTeX macros. | `proposal/numbers.tex`, `report/numbers.tex` |
 
 A full run took **about 3 minutes** (wall clock, on 2026-11-15) on the machine it was measured on (20 cores, 16 GB RAM, Linux, data already downloaded). This includes the `s03` clones over the network. Downloading the data adds the transfer time for about 2.1 GB.

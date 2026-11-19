@@ -87,6 +87,16 @@ def build(n):
               "numDoublePerGroup": i(sp["double_per_group"]), "numFallbackPerGroup": i(sp["fallback_per_group"]),
               "numSampleFossilRepos": i(g["fossil"]["repos_in_sample"]),
               "numSampleEditedRepos": i(g["edited"]["repos_in_sample"])}
+    if "pilot" in n and "fields" in n["pilot"]:   # s09_pilot_codebook.py (codebook v0)
+        pf = n["pilot"]["fields"]
+        st = n["pilot"]["taxonomy_b_stop_rule"]
+        kap = lambda x: r"\textbf{n/a}" if x is None else f"{x:.2f}"
+        m |= {"kappaPilotReq": kap(pf["requirements_extent"]["kappa"]),
+              "kappaPilotImpl": kap(pf["implementation_extent"]["kappa"]),
+              "kappaPilotCompleteness": kap(pf["completeness"]["kappa"]),
+              "pctPilotAgreeImpl": pct(pf["implementation_extent"]["agreement"], 0),
+              "pctPilotSpecOfWorkMax": pct(max(st[c]["share_spec_of_work"] for c in ("coder1", "coder2")), 0),
+              "numRecheck": i(n["pilot"]["recheck"]["n"])}
     if "renames" in n:
         rn = n["renames"]
         m |= {"numRenameChecked": i(rn["checked"]),

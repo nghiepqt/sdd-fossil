@@ -38,7 +38,9 @@ GROUPS = ("fossil", "edited")
 SHEET_FIELDS = {
     "pilot": ["is_spec", "requirements_extent", "implementation_extent", "completeness",
               "is_spec_of_work", "purpose", "object", "note"],
-    "double": ["is_spec", "requirements_extent", "implementation_extent", "completeness", "note"],
+    # Codebook v1 (2026-11-19): taxonomy B dropped by its stop rule; completeness split into purpose_status
+    # (computed by s09) and body_completeness (human, Purpose ignored).
+    "double": ["is_spec", "requirements_extent", "implementation_extent", "body_completeness", "note"],
 }
 
 
