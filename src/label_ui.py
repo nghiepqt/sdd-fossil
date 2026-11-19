@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Fast local web UI for human coding of OpenSpec specs (pilot & double coding).
+"""Fast local web UI for human coding of OpenSpec specs (Codebook v1 & v0).
 
 Reads a coder's CSV copy (never *_TEMPLATE.csv) and its sibling `specs/` folder,
 displays objective structural facts + full spec text on the left, and provides
-keyboard-driven coding controls on the right. Saves directly back to the CSV.
+keyboard-driven coding controls + an interactive codebook guide on the right.
+Saves directly back to the CSV atomically.
 """
 
 from __future__ import annotations
@@ -21,24 +22,25 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 EXTENT_VALUES = ("none", "incidental", "substantial", "dominant")
-COMPLETENESS_VALUES = ("complete", "complete_except_purpose", "skeletal", "near_empty")  # codebook v0 (pilot)
-BODY_COMPLETENESS_VALUES = ("complete", "skeletal", "near_empty")  # codebook v1: column body_completeness
+V0_COMPLETENESS_VALUES = ("complete", "complete_except_purpose", "skeletal", "near_empty")
+V1_COMPLETENESS_VALUES = ("complete", "skeletal", "near_empty")
 PURPOSE_VALUES = ("feat", "fix", "refactor", "style", "perf")
 OBJECT_VALUES = ("docs", "test", "ci", "build", "chore")
 
 HEADING_RE = re.compile(r"^(#{1,4})\s+(.*\S)\s*$")
-REQ_RE = re.compile(r"^###\s+Requirement:", re.IGNORECASE)
+REQ_RE = re.compile(r"^###\s+Requirement:\s*(.*)$", re.IGNORECASE)
 SCENARIO_RE = re.compile(r"^####\s+Scenario:", re.IGNORECASE)
 DELTA_RE = re.compile(r"^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements\b", re.IGNORECASE)
 CHECKBOX_RE = re.compile(r"^\s*[-*]\s+\[[ xX]\]\s+")
 CODE_FENCE_RE = re.compile(r"^\s*```")
+PURPOSE_BLOCK_RE = re.compile(r"^##\s+Purpose\s*$(.*?)(?=^##\s|\Z)", re.M | re.S | re.I)
 FILE_TOKEN_RE = re.compile(
     r"`([^`\s]+(?:/[^`\s]+|\.(?:ts|tsx|js|jsx|py|go|rs|java|kt|cs|rb|php|sql|yaml|yml|json|toml|md|sh|css|scss|html)))`"
 )
 
 
 def extract_objective_summary(text: str) -> dict:
-    """Extract purely objective structural facts from a spec markdown file."""
+    """Extract purely objective structural facts aligned with s09_pilot_codebook.py."""
     lines = text.splitlines()
     headings = []
     req_count = 0
@@ -50,11 +52,22 @@ def extract_objective_summary(text: str) -> dict:
 
     purpose_lines: list[str] = []
     in_purpose = False
+    purpose_start_line: int | None = None
+    purpose_end_line: int | None = None
+
+    # Track non-standard sections (outside Purpose, Requirements, Requirement:, Scenario:)
+    # and track each ### Requirement: block for missing #### Scenario:
+    non_standard_sections: list[dict] = []
+    current_custom_section: dict | None = None
+    req_blocks: list[dict] = []
+    current_req: dict | None = None
 
     for idx, line in enumerate(lines, start=1):
         if CODE_FENCE_RE.match(line):
             code_fence_lines += 1
             in_code = not in_code
+            if current_custom_section is not None:
+                current_custom_section["content_lines"] += 1
             continue
 
         if not in_code:
@@ -64,57 +77,120 @@ def extract_objective_summary(text: str) -> dict:
                 title = m.group(2).strip()
                 headings.append({"level": level, "line": idx, "text": title})
 
+                if in_purpose and level <= 2:
+                    in_purpose = False
+                    purpose_end_line = idx - 1
+
                 if level == 2 and title.lower() == "purpose":
                     in_purpose = True
+                    purpose_start_line = idx
+                    current_custom_section = None
+                    current_req = None
                     continue
-                elif in_purpose and level <= 2:
-                    in_purpose = False
 
-            if REQ_RE.match(line):
-                req_count += 1
-            if SCENARIO_RE.match(line):
-                scenario_count += 1
-            if DELTA_RE.match(line):
-                delta_count += 1
+                if level <= 2:
+                    current_req = None
+                elif level == 3:
+                    req_m = REQ_RE.match(line)
+                    if req_m:
+                        current_req = {
+                            "line": idx,
+                            "title": req_m.group(1).strip(),
+                            "has_scenario": False,
+                            "body_lines": 0,
+                        }
+                        req_blocks.append(current_req)
+                    else:
+                        current_req = None
+
+                # Dedicated-section candidate tracking (Rule 3):
+                # Exclude #, ## Purpose, ## Requirements, ### Requirement:..., #### Scenario:...
+                is_standard = (
+                    level == 1
+                    or (level == 2 and title.lower() in ("purpose", "requirements"))
+                    or bool(REQ_RE.match(line))
+                    or bool(SCENARIO_RE.match(line))
+                )
+                if is_standard:
+                    current_custom_section = None
+                else:
+                    current_custom_section = {"level": level, "line": idx, "text": title, "content_lines": 0}
+                    non_standard_sections.append(current_custom_section)
+
+                if REQ_RE.match(line):
+                    req_count += 1
+                if SCENARIO_RE.match(line):
+                    scenario_count += 1
+                    if current_req is not None:
+                        current_req["has_scenario"] = True
+                if DELTA_RE.match(line):
+                    delta_count += 1
+                continue
+
             if CHECKBOX_RE.match(line):
                 checkbox_count += 1
 
         if in_purpose:
             purpose_lines.append(line)
+        else:
+            is_content = bool(line.strip()) and not line.lstrip().startswith("#") and not line.startswith("<!-- item ")
+            if is_content:
+                if current_custom_section is not None:
+                    current_custom_section["content_lines"] += 1
+                if current_req is not None:
+                    current_req["body_lines"] += 1
+
+    if in_purpose and purpose_end_line is None:
+        purpose_end_line = len(lines)
+
+    # Compute n_body_lines exactly like s09_pilot_codebook.py
+    text_no_purpose = PURPOSE_BLOCK_RE.sub("", text)
+    n_body_lines = sum(
+        1
+        for ln in text_no_purpose.splitlines()
+        if ln.strip() and not ln.lstrip().startswith("#") and not ln.startswith("<!-- item ")
+    )
 
     purpose_text = "\n".join(purpose_lines).strip()
-    if not purpose_text and not any(
-        h["level"] == 2 and h["text"].lower() == "purpose" for h in headings
-    ):
+    if purpose_start_line is None:
         purpose_status = "missing_section"
     elif not purpose_text:
         purpose_status = "empty_section"
     else:
         purpose_status = "present"
 
+    reqs_without_scenario = [
+        {"line": r["line"], "title": r["title"], "body_lines": r["body_lines"]}
+        for r in req_blocks
+        if not r["has_scenario"]
+    ]
+    dedicated_candidates = [s for s in non_standard_sections if s["content_lines"] >= 2]
     file_tokens = sorted(set(FILE_TOKEN_RE.findall(text)))
 
     return {
         "line_count": len(lines),
+        "n_body_lines": n_body_lines,
         "word_count": len(text.split()),
-        "char_count": len(text),
         "purpose_status": purpose_status,
         "purpose_excerpt": purpose_text,
+        "purpose_range": [purpose_start_line, purpose_end_line] if purpose_start_line else None,
         "headings": headings,
+        "reqs_without_scenario": reqs_without_scenario,
+        "dedicated_candidates": dedicated_candidates,
         "counts": {
             "requirements": req_count,
             "scenarios": scenario_count,
+            "reqs_without_scenario": len(reqs_without_scenario),
             "code_blocks": code_fence_lines // 2,
             "delta_headers": delta_count,
             "checkboxes": checkbox_count,
             "file_tokens": len(file_tokens),
         },
-        "file_tokens_sample": file_tokens[:12],
     }
 
 
 def load_csv(csv_path: Path) -> tuple[list[str], list[dict[str, str]]]:
-    with csv_path.open("r", encoding="utf-8", newline="") as f:
+    with csv_path.open("r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:
             raise ValueError(f"Empty CSV header in {csv_path}")
@@ -132,63 +208,84 @@ def write_csv_atomic(csv_path: Path, fieldnames: list[str], rows: list[dict[str,
     os.replace(tmp_path, csv_path)
 
 
-def is_row_coded(row: dict[str, str], has_taxonomy_b: bool) -> bool:
-    is_spec = (row.get("is_spec") or "").strip().upper()
-    if is_spec == "FALSE":
+def detect_schema(fieldnames: list[str]) -> dict:
+    if "body_completeness" in fieldnames:
+        return {
+            "codebook": "v1",
+            "completeness_col": "body_completeness",
+            "completeness_values": V1_COMPLETENESS_VALUES,
+            "has_taxonomy_b": False,
+        }
+    return {
+        "codebook": "v0",
+        "completeness_col": "completeness",
+        "completeness_values": V0_COMPLETENESS_VALUES,
+        "has_taxonomy_b": "is_spec_of_work" in fieldnames,
+    }
+
+
+def is_row_coded(row: dict[str, str], schema: dict) -> bool:
+    is_spec = (row.get("is_spec") or "").strip().lower()
+    if is_spec == "false":
         return True
-    if is_spec != "TRUE":
+    if is_spec != "true":
         return False
+    comp_col = schema["completeness_col"]
     base_ok = all(
         (row.get(col) or "").strip()
-        for col in ("requirements_extent", "implementation_extent", "completeness")
+        for col in ("requirements_extent", "implementation_extent", comp_col)
     )
     if not base_ok:
         return False
-    if has_taxonomy_b:
+    if schema["has_taxonomy_b"]:
         return bool((row.get("is_spec_of_work") or "").strip())
     return True
 
 
-def validate_and_normalize_payload(payload: dict, has_taxonomy_b: bool,
-                                   comp_values: tuple[str, ...] = COMPLETENESS_VALUES) -> dict[str, str]:
-    is_spec = str(payload.get("is_spec", "")).strip().upper()
-    if is_spec not in ("TRUE", "FALSE"):
-        raise ValueError("is_spec must be TRUE or FALSE")
+def validate_and_normalize_payload(payload: dict, schema: dict) -> dict[str, str]:
+    is_spec_raw = str(payload.get("is_spec", "")).strip().lower()
+    if is_spec_raw not in ("true", "false"):
+        raise ValueError("is_spec must be true or false")
+
+    bool_true = "true" if schema["codebook"] == "v1" else "TRUE"
+    bool_false = "false" if schema["codebook"] == "v1" else "FALSE"
+    comp_col = schema["completeness_col"]
+    allowed_comp = schema["completeness_values"]
 
     note = str(payload.get("note", "")).replace("\r", " ").replace("\n", " ").strip()
 
-    if is_spec == "FALSE":
+    if is_spec_raw == "false":
         out = {
-            "is_spec": "FALSE",
+            "is_spec": bool_false,
             "requirements_extent": "",
             "implementation_extent": "",
-            "completeness": "",
+            comp_col: "",
             "note": note,
         }
-        if has_taxonomy_b:
+        if schema["has_taxonomy_b"]:
             out.update({"is_spec_of_work": "", "purpose": "", "object": ""})
         return out
 
     req_ext = str(payload.get("requirements_extent", "")).strip()
     impl_ext = str(payload.get("implementation_extent", "")).strip()
-    comp = str(payload.get("completeness", "")).strip()
+    comp = str(payload.get(comp_col, "")).strip()
 
     if req_ext not in EXTENT_VALUES:
         raise ValueError(f"Invalid requirements_extent: {req_ext!r}")
     if impl_ext not in EXTENT_VALUES:
         raise ValueError(f"Invalid implementation_extent: {impl_ext!r}")
-    if comp not in comp_values:
-        raise ValueError(f"Invalid completeness: {comp!r}")
+    if comp not in allowed_comp:
+        raise ValueError(f"Invalid {comp_col}: {comp!r}")
 
     out = {
-        "is_spec": "TRUE",
+        "is_spec": bool_true,
         "requirements_extent": req_ext,
         "implementation_extent": impl_ext,
-        "completeness": comp,
+        comp_col: comp,
         "note": note,
     }
 
-    if has_taxonomy_b:
+    if schema["has_taxonomy_b"]:
         work = str(payload.get("is_spec_of_work", "")).strip().upper()
         if work not in ("TRUE", "FALSE"):
             raise ValueError("is_spec_of_work must be TRUE or FALSE")
@@ -214,13 +311,7 @@ def validate_and_normalize_payload(payload: dict, has_taxonomy_b: bool,
                         raise ValueError(f"Invalid object value: {v!r}")
                 object_str = ";".join(o_vals)
 
-        out.update(
-            {
-                "is_spec_of_work": work,
-                "purpose": purpose_str,
-                "object": object_str,
-            }
-        )
+        out.update({"is_spec_of_work": work, "purpose": purpose_str, "object": object_str})
 
     return out
 
@@ -230,7 +321,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>OpenSpec Fast Coder</title>
+<title>OpenSpec Coder</title>
 <style>
   :root {
     --bg: #0f172a;
@@ -255,15 +346,16 @@ HTML_PAGE = r"""<!DOCTYPE html>
   body { display: flex; flex-direction: column; overflow: hidden; }
 
   header {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--border);
   }
-  .title { font-weight: 700; font-size: 15px; color: #f8fafc; }
+  .title { font-weight: 700; font-size: 14px; color: #f8fafc; }
   .pill-stat {
     background: var(--card); border: 1px solid var(--border); border-radius: 999px;
-    padding: 3px 10px; font-size: 12px; color: var(--muted);
+    padding: 3px 9px; font-size: 12px; color: var(--muted);
   }
   .pill-stat strong { color: var(--green); }
+  .pill-v1 { border-color: var(--accent); color: #bae6fd; background: var(--accent-bg); }
   .nav-group { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
   select, button, input[type="text"] {
     background: var(--card); color: var(--text); border: 1px solid var(--border);
@@ -280,7 +372,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   a.gh-link:hover { border-color: var(--accent); }
 
   main {
-    display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.9fr);
+    display: grid; grid-template-columns: minmax(0, 1.32fr) minmax(390px, 0.95fr);
     flex: 1; min-height: 0;
   }
 
@@ -291,9 +383,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
   }
   .digest {
     padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--border);
-    display: flex; flex-direction: column; gap: 8px; max-height: 38vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 7px; max-height: 40vh; overflow-y: auto;
   }
-  .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .badge {
     font-size: 12px; padding: 2px 8px; border-radius: 6px;
     background: var(--card); border: 1px solid var(--border); color: var(--muted);
@@ -301,21 +393,31 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .badge strong { color: var(--text); }
   .badge.warn { border-color: var(--amber); background: var(--amber-bg); color: #fde68a; }
   .badge.info { border-color: var(--accent); background: var(--accent-bg); color: #bae6fd; }
-  .purpose-box {
-    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
-    padding: 7px 10px; font-size: 12.5px; line-height: 1.4;
+  .badge.good { border-color: var(--green); background: var(--green-bg); color: #bbf7d0; }
+
+  .threshold-bar {
+    font-size: 12px; color: #cbd5e1; background: #0f172a; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 9px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   }
-  .purpose-box .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 3px; }
-  .purpose-box pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 12px; color: #f1f5f9; }
-  .outline { display: flex; flex-wrap: wrap; gap: 4px; }
-  .outline-btn {
+  .threshold-bar b { color: var(--accent); }
+
+  .callout-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 9px; font-size: 12px; line-height: 1.45;
+  }
+  .callout-box .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 3px; }
+  .callout-box pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: 12px; color: #f1f5f9; }
+  .jump-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .jump-btn {
     font-size: 11.5px; padding: 2px 7px; border-radius: 4px; background: #0f172a;
     border: 1px solid var(--border); color: #cbd5e1; max-width: 280px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .outline-btn:hover { border-color: var(--accent); color: #fff; }
-  .outline-btn.h2 { border-left: 3px solid var(--accent); }
-  .outline-btn.h3 { border-left: 3px solid #818cf8; }
+  .jump-btn:hover { border-color: var(--accent); color: #fff; }
+  .jump-btn.h2 { border-left: 3px solid var(--accent); }
+  .jump-btn.h3 { border-left: 3px solid #818cf8; }
+  .jump-btn.warn { border-color: var(--amber); color: #fde68a; }
+  .jump-btn.info { border-color: var(--accent); color: #bae6fd; }
 
   .spec-scroll {
     flex: 1; overflow-y: auto; padding: 12px 14px; font-family: var(--mono);
@@ -324,31 +426,37 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .spec-line { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 10px; padding: 1px 4px; border-radius: 3px; }
   .spec-line:hover { background: rgba(148, 163, 184, 0.08); }
   .spec-line.flash { background: rgba(56, 189, 248, 0.25); transition: background 0.8s; }
+  .spec-line.purpose-masked { opacity: 0.35; }
+  .purpose-banner {
+    margin: 4px 0; padding: 6px 10px; border-radius: 6px;
+    background: #1e293b; border: 1px dashed #475569; color: var(--muted);
+    font-family: var(--sans); font-size: 12px; display: flex; align-items: center; gap: 10px;
+  }
   .ln { color: #475569; text-align: right; user-select: none; font-size: 11px; padding-top: 1px; }
   .lc { white-space: pre-wrap; word-break: break-word; }
   .lc.h1, .lc.h2 { color: #38bdf8; font-weight: 700; }
   .lc.h3 { color: #a5b4fc; font-weight: 700; }
   .lc.h4 { color: #86efac; font-weight: 600; }
   .lc.code { color: #fcd34d; }
-  .lc.kw { color: #f8fafc; }
   .tok-code { background: rgba(245, 158, 11, 0.16); color: #fde68a; padding: 0 3px; border-radius: 3px; }
   .tok-kw { color: #f472b6; font-weight: 700; }
 
   /* Right Pane */
   .right-pane {
     display: flex; flex-direction: column; min-height: 0; overflow-y: auto;
-    padding: 12px 14px; background: var(--panel); gap: 11px;
+    padding: 12px 14px; background: var(--panel); gap: 10px;
   }
   .field-card {
     background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-    padding: 9px 11px; display: flex; flex-direction: column; gap: 7px;
+    padding: 9px 11px; display: flex; flex-direction: column; gap: 6px;
   }
   .field-card.missing { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
   .field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .field-title { font-weight: 600; font-size: 13px; color: #f8fafc; }
   .field-hint { font-size: 11px; color: var(--muted); }
+  .field-sub { font-size: 11.5px; color: #94a3b8; line-height: 1.35; }
   .btn-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .btn-row.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .btn-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .btn-row.flex { display: flex; flex-wrap: wrap; gap: 6px; }
   .opt-btn {
     display: flex; align-items: center; gap: 6px; text-align: left;
@@ -370,6 +478,24 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .chip { font-size: 11px; padding: 2px 7px; background: #0f172a; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); }
   .chip:hover { color: #fff; border-color: var(--accent); }
 
+  /* Quick Codebook Card */
+  .codebook-card {
+    background: #0f172a; border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 11px; font-size: 12px; line-height: 1.45; color: #cbd5e1;
+  }
+  .codebook-card summary {
+    cursor: pointer; font-weight: 600; color: var(--accent); user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cb-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px; }
+  .cb-sec { background: #111827; border: 1px solid #1e293b; border-radius: 6px; padding: 7px 9px; }
+  .cb-sec h4 { margin: 0 0 4px 0; font-size: 12px; color: #f8fafc; }
+  .cb-sec ul { margin: 0; padding-left: 16px; }
+  .cb-sec li { margin: 2px 0; }
+  .cb-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tag-req { color: #86efac; font-weight: 600; }
+  .tag-imp { color: #fcd34d; font-weight: 600; }
+
   .save-bar {
     position: sticky; bottom: 0; background: var(--panel); padding-top: 6px;
     display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border);
@@ -378,24 +504,33 @@ HTML_PAGE = r"""<!DOCTYPE html>
   .status-msg.ok { color: var(--green); }
   .status-msg.err { color: var(--red); }
 
-  .cheat {
-    font-size: 11.5px; color: var(--muted); line-height: 1.45;
-    background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+  /* Modal for full Codebook */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(2, 6, 23, 0.78);
+    display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;
   }
-  .cheat b { color: #cbd5e1; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    max-width: 860px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .modal-head h2 { margin: 0; font-size: 16px; color: #f8fafc; }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <header>
   <span class="title" id="sheetTitle">OpenSpec Coder</span>
+  <span class="pill-stat pill-v1" id="codebookBadge">v1</span>
   <span class="pill-stat" id="progressStat">0 / 0 coded</span>
   <span class="pill-stat" id="itemBadge">...</span>
   <a class="gh-link" id="ghLink" href="#" target="_blank" rel="noopener">GitHub ↗</a>
 
   <div class="nav-group">
+    <button id="guideBtn" title="Full Codebook Guide (?)">Guide (?)</button>
     <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;">
-      <input type="checkbox" id="unlabelledOnly" /> Unlabelled only
+      <input type="checkbox" id="unlabelledOnly" /> Todo only
     </label>
     <select id="itemSelect"></select>
     <button id="prevBtn" title="Previous ([)">← [</button>
@@ -408,11 +543,20 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <section class="left-pane">
     <div class="digest">
       <div class="badges" id="digestBadges"></div>
-      <div class="purpose-box">
+      <div class="threshold-bar" id="thresholdBar"></div>
+      <div class="callout-box hidden" id="purposeBox">
         <div class="lbl" id="purposeLabel">## Purpose</div>
-        <pre id="purposeText">Loading...</pre>
+        <pre id="purposeText"></pre>
       </div>
-      <div class="outline" id="headingOutline"></div>
+      <div class="callout-box hidden" id="missingScenBox">
+        <div class="lbl">Requirements missing #### Scenario: (click to jump)</div>
+        <div class="jump-list" id="missingScenList"></div>
+      </div>
+      <div class="callout-box hidden" id="dedicatedBox">
+        <div class="lbl">Non-standard sections with ≥2 body lines (Rule 3 dedicated-section candidates)</div>
+        <div class="jump-list" id="dedicatedList"></div>
+      </div>
+      <div class="jump-list" id="headingOutline"></div>
     </div>
     <div class="spec-scroll" id="specContent">Loading...</div>
   </section>
@@ -424,68 +568,65 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <span class="field-hint">Key: <span class="kbd">x</span> toggle</span>
       </div>
       <div class="btn-row">
-        <button class="opt-btn" data-field="is_spec" data-val="TRUE"><span class="kbd">x</span> TRUE (is a spec)</button>
-        <button class="opt-btn" data-field="is_spec" data-val="FALSE"><span class="kbd">x</span> FALSE (not a spec)</button>
+        <button class="opt-btn" data-field="is_spec" data-val="true"><span class="kbd">x</span> true (is a spec)</button>
+        <button class="opt-btn" data-field="is_spec" data-val="false"><span class="kbd">x</span> false (empty template / unrelated)</button>
       </div>
     </div>
 
-    <div id="specOnlyFields" style="display:flex;flex-direction:column;gap:11px;">
+    <div id="specOnlyFields" style="display:flex;flex-direction:column;gap:10px;">
       <div class="field-card" id="card_requirements_extent">
         <div class="field-head">
-          <span class="field-title">2. requirements_extent</span>
+          <span class="field-title">2. requirements_extent (observable behaviour)</span>
           <span class="field-hint">Keys: <span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span> <span class="kbd">4</span></span>
         </div>
-        <div class="btn-row four">
-          <button class="opt-btn" data-field="requirements_extent" data-val="none"><span class="kbd">1</span> none</button>
-          <button class="opt-btn" data-field="requirements_extent" data-val="incidental"><span class="kbd">2</span> incidental</button>
-          <button class="opt-btn" data-field="requirements_extent" data-val="substantial"><span class="kbd">3</span> substantial</button>
-          <button class="opt-btn" data-field="requirements_extent" data-val="dominant"><span class="kbd">4</span> dominant</button>
+        <div class="field-sub">SHALL/MUST, WHEN/THEN scenarios, constraints, roles, API endpoints, CLI flags, UI text, sample I/O JSON.</div>
+        <div class="btn-row">
+          <button class="opt-btn" data-field="requirements_extent" data-val="none"><span class="kbd">1</span> none (0 lines)</button>
+          <button class="opt-btn" data-field="requirements_extent" data-val="incidental"><span class="kbd">2</span> incidental (&lt;10%, or 1 line)</button>
+          <button class="opt-btn" data-field="requirements_extent" data-val="substantial"><span class="kbd">3</span> substantial (10–50% or ded. sec)</button>
+          <button class="opt-btn" data-field="requirements_extent" data-val="dominant"><span class="kbd">4</span> dominant (&gt;50%)</button>
         </div>
       </div>
 
       <div class="field-card" id="card_implementation_extent">
         <div class="field-head">
-          <span class="field-title">3. implementation_extent</span>
+          <span class="field-title">3. implementation_extent (internal build)</span>
           <span class="field-hint">Keys: <span class="kbd">q</span> <span class="kbd">w</span> <span class="kbd">e</span> <span class="kbd">r</span></span>
         </div>
-        <div class="btn-row four">
-          <button class="opt-btn" data-field="implementation_extent" data-val="none"><span class="kbd">q</span> none</button>
-          <button class="opt-btn" data-field="implementation_extent" data-val="incidental"><span class="kbd">w</span> incidental</button>
-          <button class="opt-btn" data-field="implementation_extent" data-val="substantial"><span class="kbd">e</span> substantial</button>
-          <button class="opt-btn" data-field="implementation_extent" data-val="dominant"><span class="kbd">r</span> dominant</button>
+        <div class="field-sub">File paths, classes/functions, DB tables/columns, architecture, steps, conventions, tech/libs, code blocks (not sample I/O).</div>
+        <div class="btn-row">
+          <button class="opt-btn" data-field="implementation_extent" data-val="none"><span class="kbd">q</span> none (0 lines)</button>
+          <button class="opt-btn" data-field="implementation_extent" data-val="incidental"><span class="kbd">w</span> incidental (&lt;10%, or 1 line)</button>
+          <button class="opt-btn" data-field="implementation_extent" data-val="substantial"><span class="kbd">e</span> substantial (10–50% or ded. sec)</button>
+          <button class="opt-btn" data-field="implementation_extent" data-val="dominant"><span class="kbd">r</span> dominant (&gt;50%)</button>
         </div>
       </div>
 
-      <div class="field-card" id="card_completeness">
+      <div class="field-card" id="card_body_completeness">
         <div class="field-head">
-          <span class="field-title">4. completeness</span>
-          <span class="field-hint">Keys: <span class="kbd">a</span> <span class="kbd">s</span> <span class="kbd">d</span> <span class="kbd">f</span></span>
+          <span class="field-title" id="compTitle">4. body_completeness (ignore Purpose!)</span>
+          <span class="field-hint" id="compHint">Keys: <span class="kbd">a</span> <span class="kbd">s</span> <span class="kbd">d</span></span>
         </div>
-        <div class="btn-row four">
-          <button class="opt-btn" data-field="completeness" data-val="complete"><span class="kbd">a</span> complete</button>
-          <button class="opt-btn" data-field="completeness" data-val="complete_except_purpose"><span class="kbd">s</span> complete_except_purpose</button>
-          <button class="opt-btn" data-field="completeness" data-val="skeletal"><span class="kbd">d</span> skeletal</button>
-          <button class="opt-btn" data-field="completeness" data-val="near_empty"><span class="kbd">f</span> near_empty</button>
-        </div>
+        <div class="field-sub" id="compSub">Every requirement needs a body + ≥1 <code>#### Scenario:</code> (with WHEN/THEN).</div>
+        <div class="btn-row three" id="compButtons"></div>
       </div>
 
       <div class="field-card hidden" id="card_is_spec_of_work">
         <div class="field-head">
-          <span class="field-title">5. is_spec_of_work (pilot)</span>
+          <span class="field-title">5. is_spec_of_work (v0 pilot)</span>
           <span class="field-hint">Key: <span class="kbd">t</span> toggle</span>
         </div>
         <div class="btn-row">
           <button class="opt-btn" data-field="is_spec_of_work" data-val="FALSE"><span class="kbd">t</span> FALSE (system as-is)</button>
           <button class="opt-btn" data-field="is_spec_of_work" data-val="TRUE"><span class="kbd">t</span> TRUE (work to do)</button>
         </div>
-
         <div id="workDetails" class="hidden" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border);">
           <div>
-            <div class="field-hint" style="margin-bottom:4px;">purpose (multi-select, or none)</div>
+            <div class="field-hint" style="margin-bottom:4px;">purpose</div>
             <div class="btn-row flex" id="purposePills"></div>
           </div>
           <div>
-            <div class="field-hint" style="margin-bottom:4px;">object (multi-select, or none)</div>
+            <div class="field-hint" style="margin-bottom:4px;">object</div>
             <div class="btn-row flex" id="objectPills"></div>
           </div>
         </div>
@@ -498,22 +639,62 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <span class="field-hint">Key: <span class="kbd">/</span> focus, <span class="kbd">Esc</span> unfocus</span>
       </div>
       <div class="note-wrap">
-        <input type="text" id="noteInput" placeholder="Hesitations, default, opened GitHub URL..." />
+        <input type="text" id="noteInput" placeholder="Hesitations, alternative structure, opened GitHub URL..." />
         <div class="chip-row">
-          <button class="chip" data-note="default">+ default</button>
           <button class="chip" data-note="opened GitHub URL">+ opened GitHub URL</button>
-          <button class="chip" data-note="mixed: ">+ mixed:</button>
+          <button class="chip" data-note="non-standard structure (no ### Requirement:)">+ non-standard structure</button>
+          <button class="chip" data-note="dedicated section: ">+ dedicated section:</button>
           <button class="chip" data-note="unsure between ">+ unsure between</button>
         </div>
       </div>
     </div>
 
-    <div class="cheat">
-      <b>Quick rules:</b>
-      <b>Extent (share of body lines, Purpose excluded):</b> none=0 | incidental=&lt;10% and no dedicated section (a single line is always at most incidental) | substantial=10–50% or a dedicated non-Requirement/Scenario section with &ge;2 lines | dominant=&gt;50%. Empty headings don't count.<br/>
-      <span id="cheatCompleteness"><b>Completeness:</b> <i>complete</i>=all filled + real Purpose | <i>complete_except_purpose</i>=reqs &amp; scenarios filled, Purpose missing/TBD | <i>skeletal</i>=headings/titles only or one-liners / missing scenarios | <i>near_empty</i>=almost nothing.</span><br/>
-      <b>Work vs System:</b> SHALL &amp; TBD Purpose are NOT work signals. No clear signal → FALSE + note <code>default</code>.
-    </div>
+    <details class="codebook-card" open id="quickCodebookCard">
+      <summary>
+        <span>Codebook v1 Quick Cheatsheet</span>
+        <span style="font-size:11px;color:var(--muted);font-weight:400;">Press <span class="kbd">?</span> for full rules</span>
+      </summary>
+      <div class="cb-grid">
+        <div class="cb-sec">
+          <h4>Rule 1 &amp; 2 — Purpose &amp; Body Completeness</h4>
+          <ul>
+            <li><b>Ignore <code>## Purpose</code> completely</b> (hidden in text; computed by script).</li>
+            <li><b>complete:</b> <u>Every</u> req has a body (SHALL/MUST or text) <b>AND</b> ≥1 scenario (<code>#### Scenario:</code> with WHEN/THEN).</li>
+            <li><b>skeletal:</b> ≥1 req has a body, <b>but ≥1</b> req is title-only or has no scenario.</li>
+            <li><b>near_empty:</b> No req has a body (headings/titles only).</li>
+          </ul>
+        </div>
+        <div class="cb-sec">
+          <h4>Rule 3 — Extent Scale (unit = share of body content lines)</h4>
+          <ul>
+            <li>Count body lines only (no headings, no blanks, no Purpose).</li>
+            <li><b>Floor rule:</b> 1 single line is <b>never</b> more than <code>incidental</code>.</li>
+            <li><b>Dedicated section:</b> Non-standard heading (not <code>### Requirement:</code>/<code>#### Scenario:</code>) with <b>≥2 content lines</b> mostly in 1 category → at least <code>substantial</code> even if &lt;10%.</li>
+          </ul>
+        </div>
+        <div class="cb-two">
+          <div class="cb-sec">
+            <h4 class="tag-req">Rule 4 — Requirement (Outside)</h4>
+            <ul>
+              <li>SHALL/MUST, WHEN/THEN, constraints, roles</li>
+              <li>Endpoints, routes, CLI flags, event names, UI text</li>
+              <li>Sample I/O JSON or CLI call blocks</li>
+              <li>Lib named as host constraint ("MUST use X because host only supports X")</li>
+            </ul>
+          </div>
+          <div class="cb-sec">
+            <h4 class="tag-imp">Rule 4 — Implementation (Inside)</h4>
+            <ul>
+              <li>File paths, classes, functions, modules</li>
+              <li>DB tables, columns, storage layout</li>
+              <li>Architecture, plans, steps, conventions</li>
+              <li>Named libs ("uses Redis", "JWT") &amp; code blocks</li>
+              <li>A <code>THEN</code> line naming a function/file/class → implementation</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </details>
 
     <div class="save-bar">
       <button class="primary" id="saveNextBtn">Save &amp; Next (<span class="kbd" style="background:#0369a1;border-color:#38bdf8;color:#fff;">Enter</span>)</button>
@@ -523,16 +704,58 @@ HTML_PAGE = r"""<!DOCTYPE html>
   </section>
 </main>
 
+<div class="modal-backdrop hidden" id="guideModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Codebook v1 — Complete Decision Guide</h2>
+      <button id="closeGuideBtn">Close (Esc)</button>
+    </div>
+    <div class="cb-sec">
+      <h4>Step 1: Skip <code>## Purpose</code> (Rule 1)</h4>
+      <p style="margin:4px 0;">Do not count <code>## Purpose</code> in extents or completeness. It is masked in this UI to preserve blinding; <code>s09</code> computes <code>purpose_status</code> automatically.</p>
+    </div>
+    <div class="cb-sec">
+      <h4>Step 2: Check <code>body_completeness</code> (Rule 2)</h4>
+      <ul>
+        <li><b>complete</b>: Every requirement has a body (at least one SHALL/MUST sentence or description) AND at least one scenario (<code>#### Scenario:</code> + at least one WHEN/THEN or GIVEN/WHEN/THEN line; empty scenario heading does not count).</li>
+        <li><b>skeletal</b>: At least one requirement has a body, but at least one requirement is title-only or lacks a scenario.</li>
+        <li><b>near_empty</b>: No requirement has a body (only headings, titles, or Purpose).</li>
+        <li><i>Alternative structures</i>: If there are no <code>### Requirement:</code> headings, apply the rule to equivalent units (numbered requirements, user stories) and explain in <code>note</code>.</li>
+      </ul>
+    </div>
+    <div class="cb-sec">
+      <h4>Step 3: Classify body lines (Rule 4 — Outside vs Inside)</h4>
+      <p style="margin:4px 0;"><b>General rule:</b> What users or external systems can observe from outside = <b>requirement</b>. How it is built inside = <b>implementation</b>. A line can belong to one category; some lines (glossary/references) are neither, so extents need not sum to 100%.</p>
+      <ul>
+        <li><b>Always check THEN lines:</b> A <code>THEN</code> line naming an internal function, file, or class counts as <b>implementation</b> for that line.</li>
+        <li><b>Code blocks:</b> Implementation, <i>unless</i> they show example input/output (sample JSON, CLI invocation) → requirement.</li>
+        <li><b>Technologies/libraries:</b> Implementation ("uses Redis", "JWT"), <i>unless</i> forced by an outside constraint ("MUST use X because host only supports X") → requirement.</li>
+      </ul>
+    </div>
+    <div class="cb-sec">
+      <h4>Step 4: Rate each extent independently (Rule 3)</h4>
+      <ul>
+        <li><b>none</b>: 0 lines</li>
+        <li><b>incidental</b>: &gt;0 and &lt;10% of body lines AND no dedicated section. <i>Floor rule: a single line is never more than incidental.</i></li>
+        <li><b>substantial</b>: 10–50% of body lines, OR a dedicated section (real author heading outside <code>### Requirement:</code>/<code>#### Scenario:</code> with ≥2 content lines mostly of that category, e.g. <code>## Data Model</code>, <code>## Architecture</code>, <code>## File Structure</code>).</li>
+        <li><b>dominant</b>: &gt;50% of body lines.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <script>
 const PURPOSE_OPTS = ["feat", "fix", "refactor", "style", "perf", "none"];
 const OBJECT_OPTS = ["docs", "test", "ci", "build", "chore", "none"];
 
 let state = {
   csvName: "",
-  hasTaxonomyB: false,
+  schema: null,
   rows: [],
   currentIndex: 0,
-  form: {}
+  form: {},
+  showPurposeInV1: false,
+  lastSpecData: null
 };
 
 function escHtml(s) {
@@ -540,11 +763,12 @@ function escHtml(s) {
 }
 
 function isCoded(row) {
-  const sp = (row.is_spec || "").trim().toUpperCase();
-  if (sp === "FALSE") return true;
-  if (sp !== "TRUE") return false;
-  if (!row.requirements_extent || !row.implementation_extent || !row.completeness) return false;
-  if (state.hasTaxonomyB && !row.is_spec_of_work) return false;
+  const sp = (row.is_spec || "").trim().toLowerCase();
+  if (sp === "false") return true;
+  if (sp !== "true") return false;
+  const compCol = state.schema.completeness_col;
+  if (!row.requirements_extent || !row.implementation_extent || !row[compCol]) return false;
+  if (state.schema.has_taxonomy_b && !row.is_spec_of_work) return false;
   return true;
 }
 
@@ -566,6 +790,36 @@ function renderItemSelect() {
   document.getElementById("progressStat").innerHTML = `<strong>${codedCount}</strong> / ${state.rows.length} coded`;
 }
 
+function renderCompletenessButtons() {
+  const container = document.getElementById("compButtons");
+  const isV1 = state.schema.codebook === "v1";
+  const vals = state.schema.completeness_values;
+  const keys = ["a", "s", "d", "f"];
+  const col = state.schema.completeness_col;
+
+  container.className = isV1 ? "btn-row three" : "btn-row";
+  container.innerHTML = "";
+  vals.forEach((v, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "opt-btn";
+    btn.dataset.field = col;
+    btn.dataset.val = v;
+    btn.innerHTML = `<span class="kbd">${keys[i]}</span> ${v}`;
+    container.appendChild(btn);
+  });
+
+  document.getElementById("compTitle").textContent = isV1
+    ? "4. body_completeness (ignore Purpose!)"
+    : "4. completeness (v0)";
+  document.getElementById("compHint").innerHTML = isV1
+    ? 'Keys: <span class="kbd">a</span> <span class="kbd">s</span> <span class="kbd">d</span>'
+    : 'Keys: <span class="kbd">a</span> <span class="kbd">s</span> <span class="kbd">d</span> <span class="kbd">f</span>';
+  document.getElementById("compSub").innerHTML = isV1
+    ? '<b>complete</b>: all reqs have body + ≥1 scenario | <b>skeletal</b>: ≥1 req missing body or scenario | <b>near_empty</b>: no req body.'
+    : 'Codebook v0 includes Purpose.';
+}
+
 function initMultiPills(containerId, opts, field) {
   const el = document.getElementById(containerId);
   el.innerHTML = "";
@@ -583,9 +837,8 @@ function initMultiPills(containerId, opts, field) {
 
 function toggleMulti(field, val) {
   let cur = (state.form[field] || "none").split(";").filter(Boolean);
-  if (val === "none") {
-    cur = ["none"];
-  } else {
+  if (val === "none") cur = ["none"];
+  else {
     cur = cur.filter(x => x !== "none");
     if (cur.includes(val)) cur = cur.filter(x => x !== val);
     else cur.push(val);
@@ -596,13 +849,14 @@ function toggleMulti(field, val) {
 }
 
 function loadRowIntoForm(row) {
-  const coded = isCoded(row);
+  const compCol = state.schema.completeness_col;
+  const rawSpec = (row.is_spec || "").trim().toLowerCase();
   state.form = {
-    is_spec: (row.is_spec || (coded ? "" : "TRUE")).toUpperCase() || "TRUE",
+    is_spec: rawSpec === "false" ? "false" : "true",
     requirements_extent: row.requirements_extent || "",
     implementation_extent: row.implementation_extent || "",
-    completeness: row.completeness || "",
-    is_spec_of_work: (row.is_spec_of_work || (coded ? "" : "FALSE")).toUpperCase() || "FALSE",
+    [compCol]: row[compCol] || "",
+    is_spec_of_work: (row.is_spec_of_work || "FALSE").toUpperCase() || "FALSE",
     purpose: row.purpose || "none",
     object: row.object || "none",
     note: row.note || ""
@@ -612,11 +866,11 @@ function loadRowIntoForm(row) {
 }
 
 function syncFormUI() {
-  const isSpec = state.form.is_spec === "TRUE";
+  const isSpec = state.form.is_spec === "true";
   document.getElementById("specOnlyFields").classList.toggle("hidden", !isSpec);
-  document.getElementById("card_is_spec_of_work").classList.toggle("hidden", !state.hasTaxonomyB);
+  document.getElementById("card_is_spec_of_work").classList.toggle("hidden", !state.schema.has_taxonomy_b);
 
-  const workTrue = state.hasTaxonomyB && isSpec && state.form.is_spec_of_work === "TRUE";
+  const workTrue = state.schema.has_taxonomy_b && isSpec && state.form.is_spec_of_work === "TRUE";
   document.getElementById("workDetails").classList.toggle("hidden", !workTrue);
 
   document.querySelectorAll(".opt-btn[data-field]").forEach(btn => {
@@ -624,8 +878,8 @@ function syncFormUI() {
     const v = btn.dataset.val;
     btn.classList.remove("active", "active-green", "active-red");
     if (state.form[f] === v) {
-      if (f === "is_spec" && v === "FALSE") btn.classList.add("active-red");
-      else if (f === "is_spec" && v === "TRUE") btn.classList.add("active-green");
+      if (f === "is_spec" && v === "false") btn.classList.add("active-red");
+      else if (f === "is_spec" && v === "true") btn.classList.add("active-green");
       else btn.classList.add("active");
     }
   });
@@ -640,19 +894,36 @@ function syncFormUI() {
   document.querySelectorAll(".field-card.missing").forEach(el => el.classList.remove("missing"));
 }
 
-function renderSpecText(rawText) {
+function renderSpecText(rawText, summary) {
   const container = document.getElementById("specContent");
   const lines = rawText.split("\n");
+  const isV1 = state.schema.codebook === "v1";
+  const pRange = summary.purpose_range;
   let inCode = false;
-  const htmlParts = lines.map((line, idx) => {
+  let bannerInserted = false;
+
+  const htmlParts = [];
+  lines.forEach((line, idx) => {
     const ln = idx + 1;
+    const inPurpose = isV1 && pRange && ln >= pRange[0] && ln <= pRange[1];
+
+    if (inPurpose && !state.showPurposeInV1) {
+      if (!bannerInserted) {
+        bannerInserted = true;
+        htmlParts.push(
+          `<div class="purpose-banner">` +
+          `<span><b>## Purpose</b> hidden (Rule 1: ignored by coders; computed by s09; preserves blinding)</span>` +
+          `<button type="button" onclick="togglePurposePeek()">Show anyway</button>` +
+          `</div>`
+        );
+      }
+      return;
+    }
+
     let cls = "lc";
-    if (/^\s*```/.test(line)) {
-      inCode = !inCode;
-      cls += " code";
-    } else if (inCode) {
-      cls += " code";
-    } else if (/^#\s+/.test(line)) cls += " h1";
+    if (/^\s*```/.test(line)) { inCode = !inCode; cls += " code"; }
+    else if (inCode) cls += " code";
+    else if (/^#\s+/.test(line)) cls += " h1";
     else if (/^##\s+/.test(line)) cls += " h2";
     else if (/^###\s+/.test(line)) cls += " h3";
     else if (/^####\s+/.test(line)) cls += " h4";
@@ -660,13 +931,20 @@ function renderSpecText(rawText) {
     let body = escHtml(line);
     if (!inCode) {
       body = body.replace(/`([^`]+)`/g, '<span class="tok-code">`$1`</span>');
-      body = body.replace(/\b(WHEN|THEN|AND|SHALL|MUST|TODO|TBD)\b/g, '<span class="tok-kw">$1</span>');
+      body = body.replace(/\b(GIVEN|WHEN|THEN|AND|SHALL|MUST|TODO|TBD)\b/g, '<span class="tok-kw">$1</span>');
     }
-    return `<div class="spec-line" id="L${ln}"><span class="ln">${ln}</span><span class="${cls}">${body || " "}</span></div>`;
+    const rowCls = inPurpose ? "spec-line purpose-masked" : "spec-line";
+    htmlParts.push(`<div class="${rowCls}" id="L${ln}"><span class="ln">${ln}</span><span class="${cls}">${body || " "}</span></div>`);
   });
+
   container.innerHTML = htmlParts.join("");
   container.scrollTop = 0;
 }
+
+window.togglePurposePeek = function() {
+  state.showPurposeInV1 = !state.showPurposeInV1;
+  if (state.lastSpecData) renderSpecText(state.lastSpecData.raw_text, state.lastSpecData.summary);
+};
 
 function jumpToLine(lineNo) {
   const el = document.getElementById("L" + lineNo);
@@ -679,68 +957,117 @@ function jumpToLine(lineNo) {
 async function showItem(index) {
   if (index < 0 || index >= state.rows.length) return;
   state.currentIndex = index;
+  state.showPurposeInV1 = false;
   const row = state.rows[index];
   renderItemSelect();
 
   const done = isCoded(row);
   document.getElementById("itemBadge").innerHTML =
     `<strong>${row.item_id}</strong> &middot; batch ${row.batch} &middot; ${done ? '<span style="color:var(--green)">coded</span>' : '<span style="color:var(--amber)">todo</span>'}`;
-  const gh = document.getElementById("ghLink");
-  gh.href = row.file_url;
+  document.getElementById("ghLink").href = row.file_url;
 
   loadRowIntoForm(row);
   setStatus("Loading spec...", "");
 
   const res = await fetch(`/api/spec?id=${encodeURIComponent(row.item_id)}`);
   const data = await res.json();
-  if (!res.ok) {
-    setStatus(data.error || "Failed to load spec", "err");
-    return;
-  }
+  if (!res.ok) { setStatus(data.error || "Failed to load spec", "err"); return; }
+  state.lastSpecData = data;
 
   const s = data.summary;
+  const c = s.counts;
   const badges = [
-    `<span class="badge"><strong>${s.line_count}</strong> lines (${s.word_count} words)</span>`,
-    `<span class="badge">Req: <strong>${s.counts.requirements}</strong></span>`,
-    `<span class="badge">Scenario: <strong>${s.counts.scenarios}</strong></span>`,
-    `<span class="badge">Code blocks: <strong>${s.counts.code_blocks}</strong></span>`,
-    `<span class="badge">File refs: <strong>${s.counts.file_tokens}</strong></span>`
+    `<span class="badge info">Body lines: <strong>${s.n_body_lines}</strong></span>`,
+    `<span class="badge">Reqs: <strong>${c.requirements}</strong></span>`,
+    `<span class="badge">Scenarios: <strong>${c.scenarios}</strong></span>`,
+    c.reqs_without_scenario > 0
+      ? `<span class="badge warn">Reqs w/o Scenario: <strong>${c.reqs_without_scenario}</strong></span>`
+      : (c.requirements > 0 ? `<span class="badge good">All reqs have Scenario</span>` : `<span class="badge">No ### Requirement:</span>`),
+    `<span class="badge">Code blocks: <strong>${c.code_blocks}</strong></span>`,
+    `<span class="badge">File refs: <strong>${c.file_tokens}</strong></span>`
   ];
-  if (s.counts.delta_headers > 0) {
-    badges.push(`<span class="badge warn">Delta headers: <strong>${s.counts.delta_headers}</strong></span>`);
-  }
-  if (s.counts.checkboxes > 0) {
-    badges.push(`<span class="badge warn">Checkboxes: <strong>${s.counts.checkboxes}</strong></span>`);
-  }
+  if (c.delta_headers > 0) badges.push(`<span class="badge warn">Delta headers: <strong>${c.delta_headers}</strong></span>`);
+  if (c.checkboxes > 0) badges.push(`<span class="badge warn">Checkboxes: <strong>${c.checkboxes}</strong></span>`);
   document.getElementById("digestBadges").innerHTML = badges.join("");
 
-  const pLabel = document.getElementById("purposeLabel");
-  const pText = document.getElementById("purposeText");
-  if (s.purpose_status === "missing_section") {
-    pLabel.textContent = "## Purpose (no ## Purpose section)";
-    pText.textContent = "(none)";
-  } else if (s.purpose_status === "empty_section") {
-    pLabel.textContent = "## Purpose (empty)";
-    pText.textContent = "(empty)";
+  // Rule 3 threshold helper
+  const n = s.n_body_lines;
+  const tBar = document.getElementById("thresholdBar");
+  if (n === 0) {
+    tBar.innerHTML = `<b>Rule 3 guide:</b> 0 body content lines (check if near_empty or not a spec).`;
   } else {
-    pLabel.textContent = "## Purpose";
-    pText.textContent = s.purpose_excerpt;
+    const incMax = Math.max(0, Math.ceil(n * 0.10) - 1);
+    const subMin = Math.max(2, Math.ceil(n * 0.10));
+    const subMax = Math.floor(n * 0.50);
+    const domMin = subMax + 1;
+    tBar.innerHTML =
+      `<span><b>Rule 3 thresholds (${n} body lines):</b></span>` +
+      `<span>incidental: <code>1–${Math.max(1, incMax)}</code> lines (&lt;10%, or any 1 line)</span>` +
+      `<span>substantial: <code>${subMin}–${Math.max(subMin, subMax)}</code> lines (or dedicated ≥2-line section)</span>` +
+      `<span>dominant: <code>≥${domMin}</code> lines (&gt;50%)</span>`;
   }
 
+  // Purpose box only for v0
+  const pBox = document.getElementById("purposeBox");
+  if (state.schema.codebook === "v0") {
+    pBox.classList.remove("hidden");
+    document.getElementById("purposeText").textContent = s.purpose_excerpt || `(${s.purpose_status})`;
+  } else {
+    pBox.classList.add("hidden");
+  }
+
+  // Missing scenario list
+  const msBox = document.getElementById("missingScenBox");
+  const msList = document.getElementById("missingScenList");
+  msList.innerHTML = "";
+  if (s.reqs_without_scenario.length > 0) {
+    msBox.classList.remove("hidden");
+    s.reqs_without_scenario.forEach(r => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "jump-btn warn";
+      b.textContent = `L${r.line}: ${r.title || "(untitled)"} (${r.body_lines} lines)`;
+      b.addEventListener("click", () => jumpToLine(r.line));
+      msList.appendChild(b);
+    });
+  } else {
+    msBox.classList.add("hidden");
+  }
+
+  // Dedicated section candidates
+  const dBox = document.getElementById("dedicatedBox");
+  const dList = document.getElementById("dedicatedList");
+  dList.innerHTML = "";
+  if (s.dedicated_candidates.length > 0) {
+    dBox.classList.remove("hidden");
+    s.dedicated_candidates.forEach(sec => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "jump-btn info";
+      b.textContent = `L${sec.line}: ${sec.text} (${sec.content_lines} lines)`;
+      b.addEventListener("click", () => jumpToLine(sec.line));
+      dList.appendChild(b);
+    });
+  } else {
+    dBox.classList.add("hidden");
+  }
+
+  // Heading outline (skip Purpose in v1 for blinding)
   const outline = document.getElementById("headingOutline");
   outline.innerHTML = "";
   s.headings.forEach(h => {
     if (h.level === 4) return;
+    if (state.schema.codebook === "v1" && h.level === 2 && h.text.toLowerCase() === "purpose") return;
     const b = document.createElement("button");
     b.type = "button";
-    b.className = `outline-btn h${h.level}`;
+    b.className = `jump-btn h${h.level}`;
     b.textContent = `${h.line}: ${h.text}`;
     b.title = h.text;
     b.addEventListener("click", () => jumpToLine(h.line));
     outline.appendChild(b);
   });
 
-  renderSpecText(data.raw_text);
+  renderSpecText(data.raw_text, s);
   setStatus(done ? "Loaded existing labels" : "Ready", "");
 }
 
@@ -751,25 +1078,22 @@ function setStatus(msg, cls) {
 }
 
 function findNextUnlabelled(fromIndex) {
-  for (let i = fromIndex + 1; i < state.rows.length; i++) {
-    if (!isCoded(state.rows[i])) return i;
-  }
-  for (let i = 0; i <= fromIndex; i++) {
-    if (!isCoded(state.rows[i])) return i;
-  }
+  for (let i = fromIndex + 1; i < state.rows.length; i++) if (!isCoded(state.rows[i])) return i;
+  for (let i = 0; i <= fromIndex; i++) if (!isCoded(state.rows[i])) return i;
   return -1;
 }
 
 async function saveCurrent(advanceToNextTodo) {
   state.form.note = document.getElementById("noteInput").value.trim();
+  const compCol = state.schema.completeness_col;
 
-  if (state.form.is_spec === "TRUE") {
+  if (state.form.is_spec === "true") {
     const missing = [];
-    for (const f of ["requirements_extent", "implementation_extent", "completeness"]) {
+    for (const f of ["requirements_extent", "implementation_extent", compCol]) {
       if (!state.form[f]) missing.push(f);
     }
     if (missing.length > 0) {
-      missing.forEach(f => document.getElementById("card_" + f)?.classList.add("missing"));
+      missing.forEach(f => document.getElementById("card_" + (f === "completeness" ? "body_completeness" : f))?.classList.add("missing"));
       setStatus("Missing: " + missing.join(", "), "err");
       return;
     }
@@ -782,10 +1106,7 @@ async function saveCurrent(advanceToNextTodo) {
     body: JSON.stringify({ item_id: row.item_id, ...state.form })
   });
   const data = await res.json();
-  if (!res.ok) {
-    setStatus(data.error || "Save failed", "err");
-    return;
-  }
+  if (!res.ok) { setStatus(data.error || "Save failed", "err"); return; }
 
   state.rows[state.currentIndex] = data.row;
   renderItemSelect();
@@ -793,9 +1114,8 @@ async function saveCurrent(advanceToNextTodo) {
 
   if (advanceToNextTodo) {
     const nextIdx = findNextUnlabelled(state.currentIndex);
-    if (nextIdx !== -1 && nextIdx !== state.currentIndex) {
-      await showItem(nextIdx);
-    } else if (nextIdx === -1) {
+    if (nextIdx !== -1 && nextIdx !== state.currentIndex) await showItem(nextIdx);
+    else if (nextIdx === -1) {
       setStatus(`Saved ${row.item_id} — ALL DONE!`, "ok");
       await showItem(state.currentIndex);
     }
@@ -807,8 +1127,7 @@ async function saveCurrent(advanceToNextTodo) {
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".opt-btn[data-field]");
   if (btn) {
-    const f = btn.dataset.field;
-    state.form[f] = btn.dataset.val;
+    state.form[btn.dataset.field] = btn.dataset.val;
     syncFormUI();
     return;
   }
@@ -831,45 +1150,54 @@ document.getElementById("nextUnlabelledBtn").addEventListener("click", () => {
 });
 document.getElementById("saveNextBtn").addEventListener("click", () => saveCurrent(true));
 document.getElementById("saveOnlyBtn").addEventListener("click", () => saveCurrent(false));
+document.getElementById("guideBtn").addEventListener("click", () => document.getElementById("guideModal").classList.remove("hidden"));
+document.getElementById("closeGuideBtn").addEventListener("click", () => document.getElementById("guideModal").classList.add("hidden"));
+document.getElementById("guideModal").addEventListener("click", (e) => {
+  if (e.target.id === "guideModal") document.getElementById("guideModal").classList.add("hidden");
+});
 
 document.addEventListener("keydown", (e) => {
+  const modalOpen = !document.getElementById("guideModal").classList.contains("hidden");
+  if (e.key === "Escape" && modalOpen) {
+    document.getElementById("guideModal").classList.add("hidden");
+    return;
+  }
+
   const inInput = document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "SELECT");
-  if (e.key === "Escape" && inInput) {
-    document.activeElement.blur();
-    return;
-  }
-  if (e.key === "Enter" && (e.ctrlKey || !inInput)) {
-    e.preventDefault();
-    saveCurrent(true);
-    return;
-  }
+  if (e.key === "Escape" && inInput) { document.activeElement.blur(); return; }
+  if (e.key === "Enter" && (e.ctrlKey || !inInput) && !modalOpen) { e.preventDefault(); saveCurrent(true); return; }
   if (inInput) return;
+
+  if (e.key === "?") {
+    document.getElementById("guideModal").classList.toggle("hidden");
+    return;
+  }
+  if (modalOpen) return;
 
   const k = e.key.toLowerCase();
   if (k === "/") { e.preventDefault(); document.getElementById("noteInput").focus(); return; }
   if (k === "[") { showItem(state.currentIndex - 1); return; }
   if (k === "]") { showItem(state.currentIndex + 1); return; }
-  if (k === "n") {
-    const nextIdx = findNextUnlabelled(state.currentIndex);
-    if (nextIdx !== -1) showItem(nextIdx);
-    return;
-  }
+  if (k === "n") { const nextIdx = findNextUnlabelled(state.currentIndex); if (nextIdx !== -1) showItem(nextIdx); return; }
   if (k === "x") {
-    state.form.is_spec = state.form.is_spec === "TRUE" ? "FALSE" : "TRUE";
+    state.form.is_spec = state.form.is_spec === "true" ? "false" : "true";
     syncFormUI();
-    if (state.form.is_spec === "FALSE") document.getElementById("noteInput").focus();
+    if (state.form.is_spec === "false") document.getElementById("noteInput").focus();
     return;
   }
-  if (state.form.is_spec !== "TRUE") return;
+  if (state.form.is_spec !== "true") return;
 
   const reqMap = { "1": "none", "2": "incidental", "3": "substantial", "4": "dominant" };
   const implMap = { "q": "none", "w": "incidental", "e": "substantial", "r": "dominant" };
-  const compMap = { "a": "complete", "s": "complete_except_purpose", "d": "skeletal", "f": "near_empty" };
+  const compKeys = ["a", "s", "d", "f"];
+  const compIdx = compKeys.indexOf(k);
 
   if (reqMap[k]) { state.form.requirements_extent = reqMap[k]; syncFormUI(); }
   else if (implMap[k]) { state.form.implementation_extent = implMap[k]; syncFormUI(); }
-  else if (compMap[k] && state.compValues.includes(compMap[k])) { state.form.completeness = compMap[k]; syncFormUI(); }
-  else if (k === "t" && state.hasTaxonomyB) {
+  else if (compIdx !== -1 && compIdx < state.schema.completeness_values.length) {
+    state.form[state.schema.completeness_col] = state.schema.completeness_values[compIdx];
+    syncFormUI();
+  } else if (k === "t" && state.schema.has_taxonomy_b) {
     state.form.is_spec_of_work = state.form.is_spec_of_work === "TRUE" ? "FALSE" : "TRUE";
     syncFormUI();
   }
@@ -882,17 +1210,11 @@ async function boot() {
   const res = await fetch("/api/state");
   const data = await res.json();
   state.csvName = data.csv_name;
-  state.hasTaxonomyB = data.has_taxonomy_b;
-  state.compValues = data.comp_values;
-  // Codebook v1: hide completeness values the sheet does not allow, relabel the field.
-  document.querySelectorAll('.opt-btn[data-field="completeness"]').forEach(b =>
-    b.classList.toggle("hidden", !data.comp_values.includes(b.dataset.val)));
-  if (data.comp_col === "body_completeness") {
-    document.querySelector("#card_completeness .field-title").textContent = "4. body_completeness (ignore Purpose)";
-    document.getElementById("cheatCompleteness").innerHTML = "<b>Body completeness (v1, ignore Purpose):</b> <i>complete</i>=every requirement has a body AND &ge;1 scenario | <i>skeletal</i>=some requirement is title-only or has no scenario | <i>near_empty</i>=no requirement has a body.";
-  }
+  state.schema = data.schema;
   state.rows = data.rows;
   document.getElementById("sheetTitle").textContent = `Coder: ${data.csv_name}`;
+  document.getElementById("codebookBadge").textContent = `codebook ${data.schema.codebook}`;
+  renderCompletenessButtons();
 
   const firstTodo = state.rows.findIndex(r => !isCoded(r));
   await showItem(firstTodo !== -1 ? firstTodo : 0);
@@ -909,16 +1231,8 @@ class LabelAppContext:
         self.csv_path = csv_path
         self.specs_dir = specs_dir
         self.fieldnames, self.rows = load_csv(csv_path)
-        self.has_taxonomy_b = "is_spec_of_work" in self.fieldnames
+        self.schema = detect_schema(self.fieldnames)
         self.index_by_id = {row["item_id"]: idx for idx, row in enumerate(self.rows)}
-        # Codebook v1 sheets use body_completeness (Purpose excluded); the UI keeps calling it "completeness".
-        self.comp_col = "body_completeness" if "body_completeness" in self.fieldnames else "completeness"
-        self.comp_values = BODY_COMPLETENESS_VALUES if self.comp_col == "body_completeness" else COMPLETENESS_VALUES
-
-    def ui_row(self, row: dict[str, str]) -> dict[str, str]:
-        out = dict(row)
-        out["completeness"] = row.get(self.comp_col, "")
-        return out
 
 
 def make_handler(ctx: LabelAppContext):
@@ -950,11 +1264,9 @@ def make_handler(ctx: LabelAppContext):
                     HTTPStatus.OK,
                     {
                         "csv_name": str(ctx.csv_path),
-                        "has_taxonomy_b": ctx.has_taxonomy_b,
+                        "schema": ctx.schema,
                         "fieldnames": ctx.fieldnames,
-                        "rows": [ctx.ui_row(r) for r in ctx.rows],
-                        "comp_col": ctx.comp_col,
-                        "comp_values": list(ctx.comp_values),
+                        "rows": ctx.rows,
                     },
                 )
                 return
@@ -987,8 +1299,7 @@ def make_handler(ctx: LabelAppContext):
                 item_id = str(payload.get("item_id", "")).strip()
                 if item_id not in ctx.index_by_id:
                     raise ValueError(f"Unknown item_id: {item_id}")
-                updates = validate_and_normalize_payload(payload, ctx.has_taxonomy_b, ctx.comp_values)
-                updates[ctx.comp_col] = updates.pop("completeness")
+                updates = validate_and_normalize_payload(payload, ctx.schema)
             except (json.JSONDecodeError, ValueError) as exc:
                 self.send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
                 return
@@ -996,7 +1307,7 @@ def make_handler(ctx: LabelAppContext):
             idx = ctx.index_by_id[item_id]
             ctx.rows[idx].update(updates)
             write_csv_atomic(ctx.csv_path, ctx.fieldnames, ctx.rows)
-            self.send_json(HTTPStatus.OK, {"row": ctx.ui_row(ctx.rows[idx])})
+            self.send_json(HTTPStatus.OK, {"row": ctx.rows[idx]})
 
     return Handler
 
@@ -1006,8 +1317,8 @@ def main() -> int:
     parser.add_argument(
         "csv_path",
         nargs="?",
-        default="labels/pilot/coding_sheet_person1.csv",
-        help="Path to the coder CSV file (default: labels/pilot/coding_sheet_person1.csv)",
+        default="labels/pilot/recheck/coding_sheet_nghiep.csv",
+        help="Path to the coder CSV file (default: labels/pilot/recheck/coding_sheet_nghiep.csv)",
     )
     parser.add_argument("--port", type=int, default=8765, help="Local port (default: 8765)")
     parser.add_argument("--no-browser", action="store_true", help="Do not auto-open browser")
@@ -1032,7 +1343,7 @@ def main() -> int:
     ctx = LabelAppContext(csv_path, specs_dir)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(ctx))
     url = f"http://127.0.0.1:{args.port}/"
-    print(f"Serving {csv_path} ({len(ctx.rows)} items) at {url}")
+    print(f"Serving {csv_path} ({len(ctx.rows)} items, codebook {ctx.schema['codebook']}) at {url}")
     print("Press Ctrl+C to stop.")
     if not args.no_browser:
         webbrowser.open(url)
