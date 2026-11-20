@@ -97,6 +97,13 @@ def build(n):
               "pctPilotAgreeImpl": pct(pf["implementation_extent"]["agreement"], 0),
               "pctPilotSpecOfWorkMax": pct(max(st[c]["share_spec_of_work"] for c in ("coder1", "coder2")), 0),
               "numRecheck": i(n["pilot"]["recheck"]["n"])}
+        if "recheck_v1" in n["pilot"]:
+            rf = n["pilot"]["recheck_v1"]["fields"]
+            m |= {"kappaRecheckReq": kap(rf["requirements_extent"]["kappa"]),
+                  "kappaRecheckReqLin": kap(rf["requirements_extent"]["kappa_linear"]),
+                  "kappaRecheckImpl": kap(rf["implementation_extent"]["kappa"]),
+                  "kappaRecheckImplLin": kap(rf["implementation_extent"]["kappa_linear"]),
+                  "pctRecheckAgreeCompleteness": pct(rf["body_completeness"]["agreement"], 0)}
     if "renames" in n:
         rn = n["renames"]
         m |= {"numRenameChecked": i(rn["checked"]),

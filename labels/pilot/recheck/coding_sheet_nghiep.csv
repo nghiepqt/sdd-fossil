@@ -1,0 +1,11 @@
+item_id,batch,file_url,is_spec,requirements_extent,implementation_extent,body_completeness,note
+P01,0,https://github.com/estebandiazm/fitmetrik-web/blob/00bee6e9e51b761c8695e0a120a30a99c92b73c1/openspec/specs/multi-plan-creator/spec.md,true,dominant,none,complete,
+P06,0,https://github.com/accidental-hedge-fund/agent-pipeline/blob/4801003b380c87bae866d35fdeb87bdaf96fd1da/openspec/specs/surgical-fix-rounds/spec.md,true,dominant,none,complete,
+P10,0,https://github.com/goern/forgejo-mcp/blob/23b4a138beffed46fdd8cf240cbc8f36691d0af6/openspec/specs/list-milestones-labels/spec.md,true,dominant,substantial,complete,
+P11,0,https://github.com/cristiangimenez86/cv-ia/blob/7331fb3a8927957f16cd8392fee7209609f6af09/openspec/specs/backend-chat-rate-limiting/spec.md,true,dominant,none,complete,
+P12,0,https://github.com/jieyu166/radiology-exam-review/blob/03727bf4cf43277213c5dca81d8135d7f77829f9/openspec/specs/concept-lazy-loading/spec.md,true,incidental,incidental,complete,traces block is included
+P15,0,https://github.com/edgardo001/app-base-net-react/blob/55f0ba66b87e4057c6c5acef13e6be6e4c4a5865/openspec/specs/users-management/spec.md,true,dominant,dominant,complete,
+P17,0,https://github.com/EnZ0cez/BaguZhan/blob/6080494c791ac08f52efccdb6cf3e0e9544b24d7/openspec/specs/api-client/spec.md,true,substantial,dominant,complete,
+P20,0,https://github.com/canonical/authentik-worker-operator/blob/2f0401ba887e323e1cce5ddaa53b3fa34242dc4d/openspec/specs/pebble-lifecycle/spec.md,true,substantial,substantial,complete,
+P27,0,https://github.com/dragonking1991/MiniNewPortal/blob/70cd447d61b5760b5d6642202397073c62eb3326/openspec/specs/backoffice-admin/spec.md,true,dominant,substantial,complete,
+P28,0,https://github.com/Tirefly/TireflyCombatSystem/blob/1c9c2bb84b72fea3b00f3f7f84814f4817c825b1/openspec/specs/buff-merge-runtime/spec.md,true,dominant,incidental,complete,

@@ -276,14 +276,14 @@
   "pilot": {
     "body_lines_by_group": {
       "edited": {
-        "median": 50.0,
+        "median": 49.0,
         "p25": 24.0,
         "p75": 102.0
       },
       "fossil": {
-        "median": 25.0,
+        "median": 24.0,
         "p25": 15.0,
-        "p75": 46.75
+        "p75": 42.0
       }
     },
     "codebook": "v0 (pilot)",
@@ -415,6 +415,89 @@
       ],
       "n": 10,
       "seed": 20261119
+    },
+    "recheck2": {
+      "items": [
+        "P03",
+        "P04",
+        "P09",
+        "P14",
+        "P18",
+        "P19",
+        "P22",
+        "P23",
+        "P29",
+        "P30"
+      ],
+      "n": 10,
+      "rules_added": "4a black-box test, 4b HTML comments excluded, prompt content, link lists",
+      "seed": 20261120
+    },
+    "recheck_v1": {
+      "codebook": "v1",
+      "coders": [
+        "T",
+        "nghiep"
+      ],
+      "fields": {
+        "body_completeness": {
+          "agreement": 1.0,
+          "coder_a": {
+            "complete": 10
+          },
+          "coder_b": {
+            "complete": 10
+          },
+          "kappa": null
+        },
+        "implementation_extent": {
+          "agreement": 0.3,
+          "b_higher": 2,
+          "b_lower": 5,
+          "coder_a": {
+            "dominant": 5,
+            "incidental": 3,
+            "none": 1,
+            "substantial": 1
+          },
+          "coder_b": {
+            "dominant": 2,
+            "incidental": 2,
+            "none": 3,
+            "substantial": 3
+          },
+          "kappa": 0.10256410256410264,
+          "kappa_linear": 0.25373134328358216
+        },
+        "is_spec": {
+          "agreement": 1.0,
+          "coder_a": {
+            "true": 10
+          },
+          "coder_b": {
+            "true": 10
+          },
+          "kappa": null
+        },
+        "requirements_extent": {
+          "agreement": 0.7,
+          "b_higher": 3,
+          "b_lower": 0,
+          "coder_a": {
+            "dominant": 5,
+            "incidental": 2,
+            "substantial": 3
+          },
+          "coder_b": {
+            "dominant": 7,
+            "incidental": 1,
+            "substantial": 2
+          },
+          "kappa": 0.4736842105263158,
+          "kappa_linear": 0.6052631578947367
+        }
+      },
+      "items": 10
     },
     "row_order_from_position": {
       "coder2": "row n = item Pnn, confirmed by coder 2 on 2026-11-19"

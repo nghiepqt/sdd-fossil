@@ -667,7 +667,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
         <div class="cb-sec">
           <h4>Rule 3 — Extent Scale (unit = share of body content lines)</h4>
           <ul>
-            <li>Count body lines only (no headings, no blanks, no Purpose).</li>
+            <li>Count body lines only (no headings, no blanks, no Purpose, <b>no HTML comments</b> <code>&lt;!-- --&gt;</code> — Rule 4b).</li>
             <li><b>Floor rule:</b> 1 single line is <b>never</b> more than <code>incidental</code>.</li>
             <li><b>Dedicated section:</b> Non-standard heading (not <code>### Requirement:</code>/<code>#### Scenario:</code>) with <b>≥2 content lines</b> mostly in 1 category → at least <code>substantial</code> even if &lt;10%.</li>
           </ul>
@@ -680,6 +680,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
               <li>Endpoints, routes, CLI flags, event names, UI text</li>
               <li>Sample I/O JSON or CLI call blocks</li>
               <li>Lib named as host constraint ("MUST use X because host only supports X")</li>
+              <li>Prompt content sent to an LLM/agent (output to another system)</li>
+              <li><b>4a:</b> a line naming a class/function that a black-box tester can still check (port opened, log line)</li>
             </ul>
           </div>
           <div class="cb-sec">
@@ -689,7 +691,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
               <li>DB tables, columns, storage layout</li>
               <li>Architecture, plans, steps, conventions</li>
               <li>Named libs ("uses Redis", "JWT") &amp; code blocks</li>
-              <li>A <code>THEN</code> line naming a function/file/class → implementation</li>
+              <li><b>4a black-box test:</b> line naming a class/function/file that only the code can verify → implementation</li>
+              <li>Link/reference lists → neither</li>
             </ul>
           </div>
         </div>
@@ -727,7 +730,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
       <h4>Step 3: Classify body lines (Rule 4 — Outside vs Inside)</h4>
       <p style="margin:4px 0;"><b>General rule:</b> What users or external systems can observe from outside = <b>requirement</b>. How it is built inside = <b>implementation</b>. A line can belong to one category; some lines (glossary/references) are neither, so extents need not sum to 100%.</p>
       <ul>
-        <li><b>Always check THEN lines:</b> A <code>THEN</code> line naming an internal function, file, or class counts as <b>implementation</b> for that line.</li>
+        <li><b>Rule 4a (black-box test):</b> for any line naming an internal class, function or file (THEN lines included), ask: could a tester check it without reading the code? Yes → <b>requirement</b> (e.g. "PebbleService SHALL open port 8080 and log WARNING"); No → <b>implementation</b> (e.g. "call <code>plan()</code> then update <code>self._container</code>").</li>
+        <li><b>Rule 4b:</b> HTML comments (<code>&lt;!-- @trace … --&gt;</code>) are not body lines; mention long ones in <code>note</code>.</li>
+        <li><b>Prompt content</b> sent to an LLM/agent → requirement; the code that builds it → implementation. Link/reference lists → neither.</li>
         <li><b>Code blocks:</b> Implementation, <i>unless</i> they show example input/output (sample JSON, CLI invocation) → requirement.</li>
         <li><b>Technologies/libraries:</b> Implementation ("uses Redis", "JWT"), <i>unless</i> forced by an outside constraint ("MUST use X because host only supports X") → requirement.</li>
       </ul>

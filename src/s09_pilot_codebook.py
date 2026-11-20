@@ -13,8 +13,10 @@ Steps:
 2. Agreement of the two pilot coders under codebook v0 (raw agreement, Cohen's kappa; linear-weighted
    kappa for the ordinal extents) and the stop rule for taxonomy B -> section "pilot" of numbers.json.
    Coder 2's sheet has no item_id column; row n is item Pnn (confirmed by coder 2 on 2026-11-19).
-3. The recheck set: the N_RECHECK pilot items on which the coders disagreed most, as an empty v1 sheet in
+3. Recheck 1: the N_RECHECK pilot items on which the coders disagreed most, as an empty v1 sheet in
    labels/pilot/recheck/ (with a copy of their spec files, so that src/label_ui.py can open it).
+   Recheck 2 (after Rules 4a/4b, 2026-11-20): N_RECHECK of the other 20 pilot items, drawn at random, in
+   labels/pilot/recheck2/. The v1 agreement of both rechecks goes to numbers.json when both sheets are coded.
 
 Human labels are filled in by the students only. This script never writes a label into a coder sheet.
 """
@@ -33,6 +35,7 @@ CODER_SHEETS = {"coder1": PILOT / "coding_sheet_person1.csv", "coder2": PILOT / 
 ROW_ORDER_FROM_POSITION = {"coder2": "row n = item Pnn, confirmed by coder 2 on 2026-11-19"}
 SEED = 20261119
 N_RECHECK = 10
+SEED_RECHECK2 = 20261120  # recheck 2: random draw from the pilot items not in recheck 1
 EXTENT = ["none", "incidental", "substantial", "dominant"]
 V0_FIELDS = ["is_spec", "requirements_extent", "implementation_extent", "completeness",
              "is_spec_of_work", "purpose", "object"]
@@ -48,6 +51,7 @@ RE_REQ = re.compile(r"^###\s+Requirement:", re.M | re.I)
 RE_SCEN = re.compile(r"^####\s+Scenario:", re.M | re.I)
 RE_DELTA = re.compile(r"^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements\b", re.M | re.I)
 RE_FENCE = re.compile(r"^\s*```", re.M)
+RE_HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)  # Rule 4b: not body lines
 
 
 def purpose_status(text):
@@ -66,17 +70,23 @@ def purpose_status(text):
 
 
 def body_lines(text):
-    """Lines with content in the body: no headings, no blank lines, no Purpose section, no item header."""
-    text = RE_PURPOSE.sub("", text)
-    return sum(1 for ln in text.splitlines()
-               if ln.strip() and not ln.lstrip().startswith("#") and not ln.startswith("<!-- item "))
+    """Lines with content in the body: no headings, no blank lines, no Purpose section, no HTML comments
+    (Rule 4b; this also drops the item header that s08 writes as an HTML comment)."""
+    text = RE_HTML_COMMENT.sub("", RE_PURPOSE.sub("", text))
+    return sum(1 for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#"))
+
+
+def html_comment_lines(text):
+    """Lines inside HTML comments, without the item header of line 1."""
+    text = text.split("\n", 1)[1] if text.startswith("<!-- item ") else text
+    return sum(m.group(0).count("\n") + 1 for m in RE_HTML_COMMENT.finditer(text))
 
 
 def structure(text):
     """Requirement and scenario counts; requirements without a scenario before the next requirement/section."""
     blocks = re.split(r"(?=^###\s+Requirement:)", text, flags=re.M | re.I)[1:]
     no_scen = sum(1 for b in blocks if not RE_SCEN.search(re.split(r"^##\s", b, maxsplit=1, flags=re.M)[0]))
-    return {"n_body_lines": body_lines(text), "n_requirements": len(RE_REQ.findall(text)), "n_scenarios": len(RE_SCEN.findall(text)),
+    return {"n_body_lines": body_lines(text), "n_html_comment_lines": html_comment_lines(text), "n_requirements": len(RE_REQ.findall(text)), "n_scenarios": len(RE_SCEN.findall(text)),
             "n_requirements_without_scenario": no_scen, "n_delta_headers": len(RE_DELTA.findall(text)),
             "n_code_blocks": len(RE_FENCE.findall(text)) // 2}
 
@@ -157,11 +167,16 @@ def recheck_set(a, b, rng):
              + (a.completeness != b.completeness).astype(int))
     d = pd.DataFrame({"score": score, "tie": rng.random(len(score))}, index=a.index)
     chosen = d.sort_values(["score", "tie"], ascending=[False, True]).head(N_RECHECK)
-    out = PILOT / "recheck"
+    ids = sorted(chosen.index)
+    write_v1_sheet(PILOT / "recheck", ids)
+    return ids, {i: int(chosen.score[i]) for i in ids}
+
+
+def write_v1_sheet(out, ids):
+    """Empty v1 sheet for the given pilot items, with a copy of their spec files (for label_ui.py)."""
     if (out / "specs").exists():
         shutil.rmtree(out / "specs")
     (out / "specs").mkdir(parents=True)
-    ids = sorted(chosen.index)
     template = pd.read_csv(PILOT / "coding_sheet_TEMPLATE.csv", dtype=str).set_index("item_id").loc[ids]
     sheet = template[["batch", "file_url"]].reset_index()
     for f in V1_FIELDS:
@@ -169,7 +184,41 @@ def recheck_set(a, b, rng):
     sheet.to_csv(out / "coding_sheet_TEMPLATE.csv", index=False)
     for i in ids:
         shutil.copy(PILOT / "specs" / f"{i}.md", out / "specs" / f"{i}.md")
-    return ids, {i: int(chosen.score[i]) for i in ids}
+
+
+def recheck2_set(recheck1_ids):
+    """Recheck 2 (after Rules 4a/4b): N_RECHECK of the other pilot items, drawn at random."""
+    rest = sorted(set(f"P{i:02d}" for i in range(1, 31)) - set(recheck1_ids))
+    ids = sorted(np.random.default_rng(SEED_RECHECK2).choice(rest, size=N_RECHECK, replace=False).tolist())
+    write_v1_sheet(PILOT / "recheck2", ids)
+    return ids
+
+
+def recheck_agreement(folder="recheck"):
+    """v1 agreement of the two coders on a recheck set (their own copies of its template)."""
+    sheets = sorted(p for p in (PILOT / folder).glob("coding_sheet_*.csv") if "TEMPLATE" not in p.name)
+    if len(sheets) != 2:
+        print(f"{folder}: expected 2 coder sheets, found {len(sheets)}; skipped")
+        return None
+    a, b = (pd.read_csv(p, dtype=str).fillna("").set_index("item_id") for p in sheets)
+    fields = ["is_spec", "requirements_extent", "implementation_extent", "body_completeness"]
+    if any((d[f].str.strip() == "").any() for d in (a, b) for f in fields) or sorted(a.index) != sorted(b.index):
+        print(f"{folder}: a coder sheet is incomplete or covers other items; skipped")
+        return None
+    b = b.loc[a.index]
+    out = {"codebook": "v1", "items": len(a), "coders": [p.stem.replace("coding_sheet_", "") for p in sheets], "fields": {}}
+    for f in fields:
+        x, y = a[f].str.strip().str.lower(), b[f].str.strip().str.lower()
+        rec = {"agreement": float((x == y).mean()), "kappa": cohen_kappa(x, y),
+               "coder_a": {k: int(v) for k, v in x.value_counts().items()},
+               "coder_b": {k: int(v) for k, v in y.value_counts().items()}}
+        if f.endswith("_extent"):
+            rec["kappa_linear"] = cohen_kappa(x, y, EXTENT, "linear")
+            r = {c: i for i, c in enumerate(EXTENT)}
+            rec["b_higher"] = int((y.map(r) > x.map(r)).sum())
+            rec["b_lower"] = int((y.map(r) < x.map(r)).sum())
+        out["fields"][f] = rec
+    return out
 
 
 def main():
@@ -184,8 +233,15 @@ def main():
         result.update({"items": 30, "row_order_from_position": ROW_ORDER_FROM_POSITION, "fields": agree,
                        "taxonomy_b_stop_rule": stop,
                        "recheck": {"seed": SEED, "n": len(ids), "items": ids, "disagreement_score": scores}})
+        ids2 = recheck2_set(ids)
+        result["recheck2"] = {"seed": SEED_RECHECK2, "n": len(ids2), "items": ids2,
+                              "rules_added": "4a black-box test, 4b HTML comments excluded, prompt content, link lists"}
     else:
-        print("pilot sheets missing: agreement and recheck set skipped")
+        print("pilot sheets missing: agreement and recheck sets skipped")
+    for folder, key in (("recheck", "recheck_v1"), ("recheck2", "recheck2_v1")):
+        rc = recheck_agreement(folder)
+        if rc:
+            result[key] = rc
     update_numbers("pilot", result)
     print(json.dumps(result, indent=1, default=str))
 
