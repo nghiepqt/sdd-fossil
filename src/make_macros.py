@@ -104,6 +104,12 @@ def build(n):
                   "kappaRecheckImpl": kap(rf["implementation_extent"]["kappa"]),
                   "kappaRecheckImplLin": kap(rf["implementation_extent"]["kappa_linear"]),
                   "pctRecheckAgreeCompleteness": pct(rf["body_completeness"]["agreement"], 0)}
+        if "recheck2_v1" in n["pilot"]:
+            r2 = n["pilot"]["recheck2_v1"]["fields"]
+            m |= {"kappaRecheckTwoImpl": kap(r2["implementation_extent"]["kappa"]),
+                  "kappaRecheckTwoImplLin": kap(r2["implementation_extent"]["kappa_linear"]),
+                  "pctRecheckTwoAgreeImpl": pct(r2["implementation_extent"]["agreement"], 0),
+                  "pctRecheckTwoAgreeReq": pct(r2["requirements_extent"]["agreement"], 0)}
     if "renames" in n:
         rn = n["renames"]
         m |= {"numRenameChecked": i(rn["checked"]),

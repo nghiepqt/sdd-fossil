@@ -1,0 +1,11 @@
+item_id,batch,file_url,is_spec,requirements_extent,implementation_extent,body_completeness,note
+P03,0,https://github.com/thaithinhhl/risk-scanner/blob/cbcc543939263cf55499a8217eddf829ba15f7a3/openspec/specs/email-otp-verification/spec.md,true,dominant,substantial,complete,
+P04,0,https://github.com/mnehpets/mtranscribe/blob/0d8d91603dc2013d3d20be340f6e1e58ccdf947b/openspec/specs/backend-serving/spec.md,true,dominant,none,complete,
+P09,0,https://github.com/commercetools/nimbus/blob/6824a8f361781caf89e2cc3ae10f637d0f79e7fb/openspec/specs/tab-nav/spec.md,true,substantial,substantial,complete,
+P14,0,https://github.com/tatargabor/set-core/blob/c45d3a71728d74c3394d59eb9efcd106b48cccf0/openspec/specs/orchestration-html-report/spec.md,true,dominant,incidental,complete,
+P18,0,https://github.com/VimCommando/espipe/blob/291b1c45526aa4e9cfc3a2254bfc25007a20968f/openspec/specs/https-remote-input/spec.md,true,dominant,none,complete,
+P19,0,https://github.com/jrgleason/mqtt-ollama-presentation/blob/f29c58bb91bef800d2bfb2fccf08bf6aefa6db10/openspec/specs/voice-gateway/spec.md,true,dominant,substantial,complete,
+P22,0,https://github.com/needuvazh/ims-v2/blob/5cbf617d6c4f64f3f9b45e70ce923da91a421dbc/openspec/specs/holiday-management/spec.md,true,dominant,incidental,complete,
+P23,0,https://github.com/filipeesch/railyin/blob/6858d83aed8c0a93e348fbe6350cd72e8d682005/openspec/specs/mcp-tools-e2e-updates/spec.md,true,dominant,substantial,complete,
+P29,0,https://github.com/dsillman2000/opencode-server-client/blob/cf9953f6ba71efb19c3f039a109ff8872917706a/openspec/specs/session-crud-sync/spec.md,true,dominant,incidental,complete,
+P30,0,https://github.com/Yeseh/cortex/blob/31b44e7a5394dc52b6a785ed45014371960feabd/openspec/specs/category-core/spec.md,true,substantial,substantial,complete,

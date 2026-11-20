@@ -433,6 +433,67 @@
       "rules_added": "4a black-box test, 4b HTML comments excluded, prompt content, link lists",
       "seed": 20261120
     },
+    "recheck2_v1": {
+      "codebook": "v1",
+      "coders": [
+        "N",
+        "T"
+      ],
+      "fields": {
+        "body_completeness": {
+          "agreement": 1.0,
+          "coder_a": {
+            "complete": 10
+          },
+          "coder_b": {
+            "complete": 10
+          },
+          "kappa": null
+        },
+        "implementation_extent": {
+          "agreement": 0.6,
+          "b_higher": 1,
+          "b_lower": 3,
+          "coder_a": {
+            "incidental": 3,
+            "none": 2,
+            "substantial": 5
+          },
+          "coder_b": {
+            "incidental": 3,
+            "none": 3,
+            "substantial": 4
+          },
+          "kappa": 0.3846153846153847,
+          "kappa_linear": 0.5454545454545454
+        },
+        "is_spec": {
+          "agreement": 1.0,
+          "coder_a": {
+            "true": 10
+          },
+          "coder_b": {
+            "true": 10
+          },
+          "kappa": null
+        },
+        "requirements_extent": {
+          "agreement": 0.8,
+          "b_higher": 2,
+          "b_lower": 0,
+          "coder_a": {
+            "dominant": 8,
+            "substantial": 2
+          },
+          "coder_b": {
+            "dominant": 10
+          },
+          "kappa": 0.0,
+          "kappa_linear": 0.0
+        }
+      },
+      "items": 10
+    },
     "recheck_v1": {
       "codebook": "v1",
       "coders": [
